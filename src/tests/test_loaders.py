@@ -3,6 +3,7 @@ import os
 from src.loaders.text_loader import LocalTextLoader
 from src.schemas.document import Document
 from src.loaders.pdf_loader import LocalPDFLoader
+from typing import List
 import fitz
 
 # pytest src/tests/test_loaders.py
@@ -26,11 +27,11 @@ def test_local_text_loader_single_file(tmp_path):
     doc = loader.load("hello.txt")
 
     # 3. Assert: Yeni sadeleşmiş şemaya göre doğrula
-    assert isinstance(doc, Document)
-    assert doc.page_content == content
-    assert doc.source == "hello.txt"
-    assert doc.file_type == "txt"
-    assert doc.document_size == len(content)
+    assert isinstance(doc[0], Document)
+    assert doc[0].page_content == content
+    assert doc[0].source == "hello.txt"
+    assert doc[0].file_type == "txt"
+    assert doc[0].document_size == len(content)
 
 def test_local_text_loader_load_all(tmp_path):
     """
@@ -80,10 +81,10 @@ def test_local_pdf_loader_single_file(tmp_path):
     doc = loader.load("test.pdf")
 
     # 3. Assert
-    assert isinstance(doc, Document)
-    assert content in doc.page_content # PDF'den çekilen metin içeriği içermeli
-    assert doc.source == "test.pdf"
-    assert doc.file_type == "pdf"
+    assert isinstance(doc[0], Document)
+    assert content in doc[0].page_content # PDF'den çekilen metin içeriği içermeli
+    assert doc[0].source == "test.pdf"
+    assert doc[0].file_type == "pdf"
 
 def test_local_pdf_loader_load_all(tmp_path):
     # 1. Arrange: İki tane PDF oluştur
