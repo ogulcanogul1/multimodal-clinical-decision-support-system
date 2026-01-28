@@ -1,0 +1,6 @@
+langchain
+pymupdf
+langchain-community
+pytest
+pydantic
+python-dotenv
