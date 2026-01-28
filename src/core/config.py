@@ -26,6 +26,7 @@ class Config:
     CORE_DIR = SRC_DIR / "core"
     TEST_DIR = SRC_DIR / "tests" 
     SCHEMAS_DIR = SRC_DIR / "schemas"
+    PREPROCESS_SRC_DIR = SRC_DIR / "preprocess"
     
     RAW_DATA_DIR = DATA_DIR / "raw"
     PROCESSED_DATA_DIR = DATA_DIR / "processed"
@@ -55,7 +56,7 @@ class Config:
             
             cls.LOADERS_DIR, cls.EMBEDDINGS_DIR, cls.VECTORSTORES_DIR,
             cls.MODULES_DIR, cls.GRAPH_DIR, cls.FUSION_DIR,
-            cls.RAG_DIR, cls.XAI_DIR, cls.CORE_DIR,cls.TEST_DIR,cls.SCHEMAS_DIR
+            cls.RAG_DIR, cls.XAI_DIR, cls.CORE_DIR,cls.TEST_DIR,cls.SCHEMAS_DIR,cls.PREPROCESS_SRC_DIR
         ]
 
         for directory in all_directories:
