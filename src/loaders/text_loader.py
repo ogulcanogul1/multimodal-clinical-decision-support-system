@@ -13,41 +13,37 @@ class LocalTextLoader(BaseLoader):
         
         self.target_dir = Config.LITERATURE_DIR / "txt"
 
-    def load(self, file_name: str) -> Document:
-        """Tek bir dosyayı ham olarak okur ve Document objesi döner."""
+    def load(self, file_name: str) -> List[Document]:
+        """Tek bir dosyayı okur ve her zaman bir LİSTE döner."""
         file_path = self.target_dir / file_name
         
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            return Document(
+            # Tek bir döküman olsa bile liste içinde döndürüyoruz
+            return [Document(
                 page_content=content,
                 source=file_name,
                 file_type="txt",
                 document_size=len(content)
-            )
+            )]
         except Exception as e:
             raise DataLoaderError(f"Dosya okunurken hata oluştu {file_path}: {e}")
 
     def load_all(self) -> List[Document]:
-        """Tüm txt dosyalarını yükler."""
+        """Tüm txt dosyalarını yükler ve birleşik bir liste döner."""
         all_documents = []
-        
         full_paths = glob(os.path.join(str(self.target_dir), "*.txt"))
         
-        if not full_paths:
-            logger.warning(f"Klasörde txt dosyası yok: {self.target_dir}")
-            return []
-
         for path in full_paths:
             file_name = os.path.basename(path)
             try:
-                doc = self.load(file_name)
-                all_documents.append(doc) # load() tekil döndüğü için append
+                # load() artık liste döndüğü için append yerine EXTEND kullanıyoruz
+                docs = self.load(file_name)
+                all_documents.extend(docs) 
             except DataLoaderError as e:
                 logger.error(f"Hata, atlanıyor: {e}")
                 continue
 
-        logger.info(f"Toplam {len(all_documents)} ham döküman yüklendi.")
         return all_documents
