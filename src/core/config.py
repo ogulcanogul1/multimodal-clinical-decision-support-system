@@ -24,12 +24,14 @@ class Config:
     RAG_DIR = SRC_DIR / "rag"
     XAI_DIR = SRC_DIR / "xai"
     CORE_DIR = SRC_DIR / "core"
-
+    TEST_DIR = SRC_DIR / "tests" 
+    SCHEMAS_DIR = SRC_DIR / "schemas"
     
     RAW_DATA_DIR = DATA_DIR / "raw"
     PROCESSED_DATA_DIR = DATA_DIR / "processed"
     LITERATURE_DIR = RAW_DATA_DIR / "literature" 
     VECTOR_DB_PATH = str(DATA_DIR / "vector_db") 
+    
 
     
     EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2" 
@@ -53,7 +55,7 @@ class Config:
             
             cls.LOADERS_DIR, cls.EMBEDDINGS_DIR, cls.VECTORSTORES_DIR,
             cls.MODULES_DIR, cls.GRAPH_DIR, cls.FUSION_DIR,
-            cls.RAG_DIR, cls.XAI_DIR, cls.CORE_DIR
+            cls.RAG_DIR, cls.XAI_DIR, cls.CORE_DIR,cls.TEST_DIR,cls.SCHEMAS_DIR
         ]
 
         for directory in all_directories:

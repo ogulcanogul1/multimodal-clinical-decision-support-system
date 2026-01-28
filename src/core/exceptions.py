@@ -20,3 +20,7 @@ class ModelInferenceError(MedicalAppError):
 class RAGServiceError(MedicalAppError): 
     """Literatür tarama veya LLM API bağlantı sorunları."""
     pass
+
+class DataLoaderError(RAGServiceError):
+    "Veri yüklenirken gerçekleşen hata"
+    pass
