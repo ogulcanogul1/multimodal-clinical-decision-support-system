@@ -142,39 +142,6 @@ class PineconeVectorStore(BaseVectorStore):
             
         return semantic_chunks
 
-    def _apply_rrf(self, semantic_docs: List[Chunk], keyword_docs: List[Chunk], top_k: int = 20) -> List[Chunk]:
-        """Reciprocal Rank Fusion ile iki listeyi harmanlar."""
-        rrf_scores = {}
-        
-        doc_map: Dict[str, Chunk] = {} 
-
-        
-        for rank, doc in enumerate(semantic_docs, 1):
-            doc_id = doc.chunk_id
-            
-            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + (1 / (self.k_rrf + rank))
-            doc_map[doc_id] = doc
-
-        
-        for rank, chunk in enumerate(keyword_docs, 1):
-            doc_id = chunk.chunk_id
-            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + (1 / (self.k_rrf + rank))
-            
-            
-            if doc_id not in doc_map:
-                doc_map[doc_id] = chunk
-
-        
-        sorted_ids = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
-        
-        
-        final_results = []
-        for doc_id, score in sorted_ids[:top_k]:
-            target_chunk = doc_map[doc_id]
-            target_chunk.score = score  # Hibrit RRF skorunu atıyoruz
-            final_results.append(target_chunk)
-
-        return final_results
 
     def get_final_context(self, query: str, query_vector: list, top_k: int = 5) -> List[Chunk]:
         """Uçtan uca Hibrit Arama + Reranking süreci."""
