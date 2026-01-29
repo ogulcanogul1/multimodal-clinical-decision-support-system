@@ -55,7 +55,7 @@ class PineconeVectorStore(BaseVectorStore):
 
         logger.info(f"Tüm batch'ler kuyruğa eklendi ve gönderiliyor.")
 
-    def search(self, query_vector, top_k=3):
+    def search(self, query_vector, top_k=5):
         results = self.index.query(
             vector=query_vector,
             top_k=top_k,
