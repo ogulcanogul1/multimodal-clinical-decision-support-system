@@ -1,5 +1,4 @@
 import torch
-import hashlib
 from typing import List
 from sentence_transformers import SentenceTransformer
 from src.schemas.chunk import Chunk
