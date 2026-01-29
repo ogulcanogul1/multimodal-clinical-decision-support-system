@@ -11,6 +11,6 @@ class BaseVectorStore(ABC):
         pass
 
     @abstractmethod
-    def search(self, query_vector: List[float], top_k: int = 5) -> List[Dict[str, Any]]:
+    def semantic_search(self, query_vector: List[float], top_k: int = 5) -> List[Dict[str, Any]]:
         """Benzerlik araması yapar."""
         pass

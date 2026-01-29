@@ -16,7 +16,8 @@ class Chunk:
     content: str
     metadata: ChunkMetadata
     chunk_id: str = field(init=False)
-    score: Optional[float] = None
+    score: Optional[float] = None # bm25 + semantic search score
+    reranker_score:Optional[float] = None # reranker score
 
     def __post_init__(self):
         """Nesne yaratıldığı an bu metod çalışır ve ID'yi generate eder."""

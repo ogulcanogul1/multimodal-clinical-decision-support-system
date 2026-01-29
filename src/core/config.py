@@ -44,8 +44,8 @@ class Config:
     CHUNK_OVERLAP = 50
     LLM_MODEL_NAME = "llama3.2" 
 
-    PINECONE_INDEX_NAME = os.environ["PINECONE_API_KEY"]
-    PINECONE_API_KEY = os.environ["PINECONE_INDEX_NAME"]
+    PINECONE_API_KEY = os.environ["PINECONE_API_KEY"]
+    PINECONE_INDEX_NAME = os.environ["PINECONE_INDEX_NAME"] 
 
     
 
@@ -79,3 +79,4 @@ class Config:
 
 
 Config.setup_directories()
+

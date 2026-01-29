@@ -1,27 +1,38 @@
+from typing import List, Dict, Any
+from pinecone import Pinecone
+
+
+from typing import List, Dict, Any
 from pinecone import Pinecone
 from src.vectorstores.base import BaseVectorStore
 from src.core.config import Config
 from src import logger
-from typing import List
-from src.schemas.chunk import Chunk
-from src.core.config import Config
+from src.schemas.chunk import Chunk,ChunkMetadata
+from src.vectorstores.keyword_search import KeywordSearchService
+from src.vectorstores.reranker import RerankerService 
 
 class PineconeVectorStore(BaseVectorStore):
     def __init__(self):
+        # Pinecone bağlantısı
         self.pc = Pinecone(api_key=Config.PINECONE_API_KEY)
         self.index = self.pc.Index(Config.PINECONE_INDEX_NAME)
         self.batch_size = 150
-        logger.info(f"Pinecone bağlandı: {Config.PINECONE_INDEX_NAME}")
+        
+        
+        self.keyword_search = KeywordSearchService()
+        self.reranker = RerankerService()
+        self.k_rrf = 60 # RRF sabiti
 
+        
+        logger.info(f"Pinecone ve Hibrit Servisler hazır: {Config.PINECONE_INDEX_NAME}")
 
     def upsert_chunks(self, chunks: List[Chunk], vectors: List[List[float]]):
-        """
-        Vektörleri batch'lere bölerek ve asenkron olarak Pinecone'a yükler.
-        """
+        self.keyword_search.fit(chunks)
         total_records = len(chunks)
-        logger.info(f"Toplam {total_records} kayıt batch'ler halinde gönderiliyor...")
+        
+        # Gönderilen asenkron istekleri tutacak bir liste
+        async_results = []
 
-        # Veriyi batch_size kadar parçalara bölüyoruz
         for i in range(0, total_records, self.batch_size):
             batch_chunks = chunks[i : i + self.batch_size]
             batch_vectors = vectors[i : i + self.batch_size]
@@ -35,32 +46,143 @@ class PineconeVectorStore(BaseVectorStore):
                         "text": chunk.content,
                         "source": chunk.metadata.source,
                         "file_type": chunk.metadata.file_type,
-                        "start_index":chunk.metadata.start_index,
-                        "end_index":chunk.metadata.end_index,
-                        "total_doc_size":chunk.metadata.total_doc_size
+                        "start_index": chunk.metadata.start_index,
+                        "end_index": chunk.metadata.end_index,
+                        "total_doc_size": chunk.metadata.total_doc_size,
+                        "page_number": chunk.metadata.page_number # Buraya ekledik
                     }
                 })
 
-            # async_req=True ile isteği arka plana atıyoruz
-            # Bu, işlemin bitmesini beklemeden bir sonraki döngüye geçmeyi sağlar
             try:
-                self.index.upsert(
+                # İsteği gönder ve dönen sonucu listeye ekle
+                res = self.index.upsert(
                     vectors=records, 
                     namespace="medical_data",
                     async_req=True 
                 )
-                logger.debug(f"Batch gönderildi: {i} - {i + len(records)}")
+                async_results.append(res)
             except Exception as e:
-                logger.error(f"Batch yüklenirken hata: {e}")
+                logger.error(f"Pinecone Batch hatası: {e}")
 
-        logger.info(f"Tüm batch'ler kuyruğa eklendi ve gönderiliyor.")
+        
+        # Tüm asenkron işlemlerin tamamlanmasını bekle
+        logger.info(f"Bekleniyor: {len(async_results)} batch yükleniyor...")
+        for res in async_results:
+            res.get() # Bu satır, ilgili batch yüklenene kadar kodun devam etmesini engeller.
+            
+        logger.info("Veriler Pinecone ve Yerel Keyword Index'e başarıyla yüklendi ve doğrulandı.")
 
-    def search(self, query_vector, top_k=5):
+    def _apply_rrf(self, semantic_docs: List[Chunk], keyword_docs: List[Chunk], top_k: int = 20) -> List[Chunk]:
+        """Reciprocal Rank Fusion ile iki listeyi harmanlar."""
+        rrf_scores = {}
+        
+        doc_map: Dict[str, Chunk] = {} 
+
+        
+        for rank, doc in enumerate(semantic_docs, 1):
+            doc_id = doc.chunk_id
+            
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + (1 / (self.k_rrf + rank))
+            doc_map[doc_id] = doc
+
+        
+        for rank, chunk in enumerate(keyword_docs, 1):
+            doc_id = chunk.chunk_id
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + (1 / (self.k_rrf + rank))
+            
+            
+            if doc_id not in doc_map:
+                doc_map[doc_id] = chunk
+
+        
+        sorted_ids = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
+        
+        
+        final_results = []
+        for doc_id, score in sorted_ids[:top_k]:
+            target_chunk = doc_map[doc_id]
+            target_chunk.score = score  # Hibrit RRF skorunu atıyoruz
+            final_results.append(target_chunk)
+
+        return final_results
+
+
+
+    def semantic_search(self, query_vector: List[float], top_k: int = 20) -> List[Chunk]:
         results = self.index.query(
             vector=query_vector,
             top_k=top_k,
             include_metadata=True,
             namespace="medical_data"
         )
-        return results.to_dict()
-    
+        
+        semantic_chunks = []
+        for match in results.get("matches", []):
+            meta = match["metadata"]
+            
+            chunk_metadata = ChunkMetadata(
+                source=meta["source"],
+                file_type=meta["file_type"],
+                start_index=meta["start_index"],
+                end_index=meta["end_index"],
+                total_doc_size=meta["total_doc_size"],
+                page_number=meta.get("page_number",None)
+            )
+            
+            chunk = Chunk(
+                content=meta["text"],
+                metadata=chunk_metadata
+            )
+            
+            
+            chunk.chunk_id = match["id"] 
+            chunk.score = match["score"]
+            
+            semantic_chunks.append(chunk)
+            
+        return semantic_chunks
+
+    def _apply_rrf(self, semantic_docs: List[Chunk], keyword_docs: List[Chunk], top_k: int = 20) -> List[Chunk]:
+        """Reciprocal Rank Fusion ile iki listeyi harmanlar."""
+        rrf_scores = {}
+        
+        doc_map: Dict[str, Chunk] = {} 
+
+        
+        for rank, doc in enumerate(semantic_docs, 1):
+            doc_id = doc.chunk_id
+            
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + (1 / (self.k_rrf + rank))
+            doc_map[doc_id] = doc
+
+        
+        for rank, chunk in enumerate(keyword_docs, 1):
+            doc_id = chunk.chunk_id
+            rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + (1 / (self.k_rrf + rank))
+            
+            
+            if doc_id not in doc_map:
+                doc_map[doc_id] = chunk
+
+        
+        sorted_ids = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
+        
+        
+        final_results = []
+        for doc_id, score in sorted_ids[:top_k]:
+            target_chunk = doc_map[doc_id]
+            target_chunk.score = score  # Hibrit RRF skorunu atıyoruz
+            final_results.append(target_chunk)
+
+        return final_results
+
+    def get_final_context(self, query: str, query_vector: list, top_k: int = 5) -> List[Chunk]:
+        """Uçtan uca Hibrit Arama + Reranking süreci."""
+        semantic_results = self.semantic_search(query_vector, top_k=20)
+        keyword_results = self.keyword_search.search(query, top_k=20)
+        
+        candidates:List[Chunk] = self._apply_rrf(semantic_results, keyword_results, top_k=20)
+        
+        final_docs = self.reranker.rerank(query, candidates, top_k=top_k)
+        
+        return final_docs

@@ -37,6 +37,21 @@ class KeywordSearchService:
             content = content.replace(char, ' ')
 
         return content.split()
+    
+    def search(self, query: str, top_k: int = 5) -> List[Chunk]:
+        """Kelime bazlı (BM25) arama yapar ve en alakalı chunk'ları döner."""
+        if not self.bm25:
+            if not self.load_index():
+                logger.warning("BM25 dizini hazır değil!")
+                return []
+
+        
+        tokenized_query = self._replace(query)
+        
+        
+        top_n_chunks = self.bm25.get_top_n(tokenized_query, self.chunks, n=top_k)
+        
+        return top_n_chunks
 
     def save_index(self):
         try:

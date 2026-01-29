@@ -1,11 +1,26 @@
-langchain
-pymupdf
-langchain-community
-pytest
-pydantic
-python-dotenv
-sentence-transformers
-torch
-transformers
-pinecone
-rank_bm25
+# --- Temel RAG ve Veri İşleme ---
+langchain>=0.2.16
+langchain-community>=0.2.16
+pymupdf>=1.24.0
+pydantic>=2.7.0
+python-dotenv>=1.0.1
+
+# --- Vektör Veritabanı ---
+pinecone>=5.0.0
+
+# --- Arama ve Sıralama (Retrieval & Reranking) ---
+rank_bm25>=0.2.2
+sentence-transformers==3.3.1
+transformers==4.47.1
+tokenizers>=0.21.0,<0.22.0
+accelerate>=1.0.0
+huggingface-hub>=0.24.0
+safetensors>=0.4.5
+
+# --- Deep Learning ve İşleme ---
+torch>=2.2.0
+torchvision>=0.17.0
+torchaudio>=2.2.0
+tqdm>=4.66.0
+numpy>=1.26.0
+pandas>=2.2.0
