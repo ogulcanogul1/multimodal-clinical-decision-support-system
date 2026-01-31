@@ -19,7 +19,7 @@ class GraphState(TypedDict):
     optimized_queries: Dict[str, str] # Local ve Web için ayrı sorgular
     retrieved_docs: List[Document]
     web_results: List[Dict[str, Any]]
-    rag_retry_count: int # Döngü sayacı
+    retrieval_retry_count: int # Döngü sayacı
     is_search_reliable: bool 
     rag_weight: float           # Fusion'da RAG'in etki katsayısı
     

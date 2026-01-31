@@ -1,5 +1,6 @@
 from src.graph.state import GraphState
 from src.graph.services.parser_service import parser_service 
+from src.graph.services.query_optimizer_service import query_optimizer_service
 
 # --- ENTRY & ROUTING ---
 def input_parser_node(state: GraphState):
@@ -10,7 +11,8 @@ def input_parser_node(state: GraphState):
 # --- RESEARCH INTELLIGENCE (RAG LOOP) ---
 def query_optimizer_node(state: GraphState):
     """Sorguyu yerel ve web araması için optimize eder."""
-    pass
+    return query_optimizer_service(state=state)
+    
 
 def hybrid_search_node(state: GraphState):
     """Pinecone 1536d + BM25 + Reranker işlemini yapar."""
