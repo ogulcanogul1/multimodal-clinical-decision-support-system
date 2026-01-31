@@ -1,0 +1,44 @@
+from typing import List, Optional, TypedDict, Dict, Any, Annotated
+import operator
+from src.schemas.document import Document
+
+class GraphState(TypedDict):
+    # --- HAM GİRİŞLER ---
+    query: str
+    image_path: Optional[str]
+    lab_results: Optional[Dict[str, float]]
+    
+    # --- AKIŞ KONTROLÜ (KRİTİK) ---
+    # Annotated ve operator.add, paralel kolların bu listeye veri eklemesini sağlar.
+    # Adaptive Fusion bu listeye bakarak hangi kolların tamamlandığını anlar.
+    active_branches: Annotated[List[str], operator.add] 
+    
+    # --- CONTROL & VALIDATION ---
+    is_image_medical: bool      # Resim tıbbi bir görüntü mü?
+    is_lab_consistent: bool     # Lab değerleri biyolojik olarak anlamlı mı?
+    gatekeeper_notes: str       # Neden reddedildiğine dair kısa not
+    
+    # --- RAG & RESEARCH INTELLIGENCE ---
+    optimized_queries: Dict[str, str] # Local ve Web için ayrı sorgular
+    retrieved_docs: List[Document]
+    web_results: List[Dict[str, Any]]
+    rag_retry_count: Annotated[int, operator.add] # Döngü sayacı
+    is_search_reliable: bool 
+    rag_weight: float           # Fusion'da RAG'in etki katsayısı
+    
+    # --- MULTIMODAL ANALİZ & XAI (AÇIKLANABİLİRLİK) ---
+    image_features: Optional[Any]     # CNN öznitelik vektörü
+    grad_cam_path: Optional[str]      # Gradcam dosya yolu
+    lab_features: Optional[Any]       # MLP öznitelik vektörü
+    feature_importance: Dict[str, float] # Karara en çok etki eden lab parametreleri
+    
+    # --- AGENTIC REASONING & SELF-CORRECTION ---
+    raw_diagnosis: str                # Diagnostic Agent'ın ilk çıktısı
+    hallucination_score: float        # Self-Critique tarafından belirlenir
+    modality_conflicts: List[str]     # Çelişen bilgiler (Örn: Görüntü X diyor, Lab Y)
+    is_verified: bool                 # Nihai onay bayrağı
+    
+    # --- ÇIKTI ---
+    final_report: str                 # Atıflı, kanıtlı ve XAI destekli rapor
+    evidence_links: Dict[str, Any]    # Rapor içindeki atıfların ham veri linkleri
+    status: str                       # "success", "retry_triggered", "failed"
