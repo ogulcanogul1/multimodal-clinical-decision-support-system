@@ -5,26 +5,8 @@ import os
 from langgraph.graph import StateGraph, START, END
 from src.graph.nodes import *
 from src.graph.state import GraphState
+from src.graph.enum.node_names import NodeNames 
 
-# --- NODE NAMES ENUM ---
-class NodeNames(str, Enum):
-    PARSER = "parser"
-    QUERY_OPTIMIZER = "query_optimizer"
-    HYBRID_SEARCH = "hybrid_search"
-    WEB_RESEARCH = "web_research"
-    KNOWLEDGE_SYNTHESIS = "knowledge_synthesis"
-    RETRIEVAL_GRADER = "retrieval_grader"
-    CNN_CONTROL = "cnn_control"  
-    IMAGE_ANALYZER = "image_analyzer"
-    IMAGE_SKIP = "image_skip"
-    MLP_CONTROL = "mlp_control"  
-    LAB_ANALYZER = "lab_analyzer"
-    LAB_SKIP = "lab_skip"
-    ADAPTIVE_FUSION = "adaptive_fusion"
-    DIAGNOSTIC_AGENT = "diagnostic_agent"
-    ATTRIBUTION = "attribution"
-    SELF_CRITIQUE = "self_critique"
-    CONFLICT_RESOLVER = "conflict_resolver"
 
 # --- YÖNLENDİRME MANTIKLARI (ROUTERS) ---
 
