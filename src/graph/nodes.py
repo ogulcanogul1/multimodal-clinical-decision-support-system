@@ -1,9 +1,11 @@
 from src.graph.state import GraphState
+from src.graph.services.parser_service import parser_service 
 
 # --- ENTRY & ROUTING ---
 def input_parser_node(state: GraphState):
     """Girişi ayrıştırır ve başlangıç state'ini kurar."""
-    pass
+    return parser_service(state=state)
+    
 
 # --- RESEARCH INTELLIGENCE (RAG LOOP) ---
 def query_optimizer_node(state: GraphState):

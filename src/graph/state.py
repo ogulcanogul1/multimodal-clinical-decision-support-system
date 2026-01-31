@@ -8,10 +8,7 @@ class GraphState(TypedDict):
     image_path: Optional[str]
     lab_results: Optional[Dict[str, float]]
     
-    # --- AKIŞ KONTROLÜ (KRİTİK) ---
-    # Annotated ve operator.add, paralel kolların bu listeye veri eklemesini sağlar.
-    # Adaptive Fusion bu listeye bakarak hangi kolların tamamlandığını anlar.
-    active_branches: Annotated[List[str], operator.add] 
+    active_branches: List[str] 
     
     # --- CONTROL & VALIDATION ---
     is_image_medical: bool      # Resim tıbbi bir görüntü mü?
@@ -22,7 +19,7 @@ class GraphState(TypedDict):
     optimized_queries: Dict[str, str] # Local ve Web için ayrı sorgular
     retrieved_docs: List[Document]
     web_results: List[Dict[str, Any]]
-    rag_retry_count: Annotated[int, operator.add] # Döngü sayacı
+    rag_retry_count: int # Döngü sayacı
     is_search_reliable: bool 
     rag_weight: float           # Fusion'da RAG'in etki katsayısı
     

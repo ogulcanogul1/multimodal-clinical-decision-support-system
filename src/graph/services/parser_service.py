@@ -28,8 +28,11 @@ def parser_service(state:GraphState):
    
     #'active_branches' Annotated[List, operator.add] olduğu için 
     # doğrudan listeyi döndürmek üzerine ekleme yapacaktır.
+
+    print(f"active branches: {active_branches}")
+    logger.info(f"active branches: {active_branches}")
     return {
         "active_branches": active_branches,
-        "retry_count": 0, # Sayaçları sıfırla
+        "rag_retry_count": 0, # Sayaçları sıfırla
         "status": SystemStatus.STARTED.value
     }
