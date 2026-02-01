@@ -1,6 +1,8 @@
 from src.graph.state import GraphState
 from src.graph.services.parser_service import parser_service 
 from src.graph.services.query_optimizer_service import query_optimizer_service
+from src.graph.services.hybrid_search_service import hybrid_search_service
+from src.graph.services.web_research_service import web_research_service
 
 # --- ENTRY & ROUTING ---
 def input_parser_node(state: GraphState):
@@ -16,11 +18,11 @@ def query_optimizer_node(state: GraphState):
 
 def hybrid_search_node(state: GraphState):
     """Pinecone 1536d + BM25 + Reranker işlemini yapar."""
-    pass
+    return hybrid_search_service(state=state)
 
 def web_research_node(state: GraphState):
     """Tavily üzerinden akademik tıbbi tarama yapar."""
-    pass
+    return web_research_service(state=state)
 
 def knowledge_synthesis_node(state: GraphState):
     """Arama sonuçlarını sentezler ve kaynakları etiketler."""

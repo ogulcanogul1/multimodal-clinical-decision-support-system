@@ -42,10 +42,9 @@ def main():
     # 6. Test Sorgusu (Hybrid + Rerank)
 
     query = "Aspirin kaç tane içilebilir?"
-    query_vector = embedding.embed_query(query) # Sorgu için de 1024-dim vektör üretiyoruz
     
     logger.info(f"Sorgu yapılıyor: {query}")
-    results = vector_store.get_final_context(query, query_vector, top_k=2)
+    results = vector_store.get_final_context(query,top_k=2)
 
     # 7. Sonuçları Yazdır
     print("\n" + "="*50)

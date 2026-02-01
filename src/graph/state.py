@@ -17,7 +17,7 @@ class GraphState(TypedDict):
     
     # --- RAG & RESEARCH INTELLIGENCE ---
     optimized_queries: Dict[str, str] # Local ve Web için ayrı sorgular
-    retrieved_docs: List[Document]
+    retrieved_docs: Annotated[List[Document], operator.add]
     web_results: List[Dict[str, Any]]
     retrieval_retry_count: int # Döngü sayacı
     is_search_reliable: bool 

@@ -10,6 +10,7 @@ from src import logger
 from src.schemas.chunk import Chunk,ChunkMetadata
 from src.vectorstores.keyword_search import KeywordSearchService
 from src.vectorstores.reranker import RerankerService 
+from src.embeddings.huggingface_embedding import EmbeddingService
 
 class PineconeVectorStore(BaseVectorStore):
     def __init__(self):
@@ -27,7 +28,6 @@ class PineconeVectorStore(BaseVectorStore):
         logger.info(f"Pinecone ve Hibrit Servisler hazır: {Config.PINECONE_INDEX_NAME}")
 
     def upsert_chunks(self, chunks: List[Chunk], vectors: List[List[float]]):
-        self.keyword_search.fit(chunks)
         total_records = len(chunks)
         
         # Gönderilen asenkron istekleri tutacak bir liste
@@ -143,8 +143,11 @@ class PineconeVectorStore(BaseVectorStore):
         return semantic_chunks
 
 
-    def get_final_context(self, query: str, query_vector: list, top_k: int = 5) -> List[Chunk]:
+    def get_final_context(self, query: str, top_k: int = 5) -> List[Chunk]:
         """Uçtan uca Hibrit Arama + Reranking süreci."""
+
+        embedding = EmbeddingService()
+        query_vector = embedding.embed_query(query=query)
         semantic_results = self.semantic_search(query_vector, top_k=20)
         keyword_results = self.keyword_search.search(query, top_k=20)
         

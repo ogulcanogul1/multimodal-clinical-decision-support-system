@@ -7,3 +7,4 @@ class Document(BaseModel):
     source: str = Field(..., description="Dosya adı (makale.txt vb.)")
     file_type: str = Field(..., description="txt, pdf, image")
     document_size:int = Field(...,description="dökümanın karakter sayısı")
+    
