@@ -29,8 +29,21 @@ def lab_gate_logic(state: GraphState) -> Literal["valid", "invalid"]:
     return "invalid"
 
 def retrieval_quality_logic(state: GraphState) -> Literal["retry", "continue"]:
-    if state.get("retry_count", 0) < 3 and not state.get("is_search_reliable"):
+    """
+    Grader'dan gelen sonuçlara göre akışa karar verir.
+    Eğer 1'den fazla alakalı döküman yoksa tekrar arama (retry) yapar.
+    """
+    relevant_docs = state.get("retrieved_docs", [])
+    retry_count = state.get("retry_count", 0)
+    MAX_RETRY = 3 
+
+    logger.info(f"--- EVALUATING RETRIEVAL QUALITY (Retry Count: {retry_count}) ---")
+
+    if len(relevant_docs) <= 1 and retry_count < MAX_RETRY:
+        logger.warning(f"Yetersiz döküman ({len(relevant_docs)} adet). Retry yoluna giriliyor...")
         return "retry"
+    
+    logger.info(f"Yeterli döküman bulundu veya limit doldu. Adaptive Fusion'a geçiliyor.")
     return "continue"
 
 def critique_logic(state: GraphState) -> Literal["conflict", "verified"]:
