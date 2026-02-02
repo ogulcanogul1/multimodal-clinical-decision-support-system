@@ -3,6 +3,9 @@ from src.graph.services.parser_service import parser_service
 from src.graph.services.query_optimizer_service import query_optimizer_service
 from src.graph.services.hybrid_search_service import hybrid_search_service
 from src.graph.services.web_research_service import web_research_service
+from src import logger
+from src.schemas.chunk import Chunk
+from typing import List
 
 # --- ENTRY & ROUTING ---
 def input_parser_node(state: GraphState):
@@ -26,7 +29,29 @@ def web_research_node(state: GraphState):
 
 def knowledge_synthesis_node(state: GraphState):
     """Arama sonuçlarını sentezler ve kaynakları etiketler."""
-    pass
+    logger.info("--- KNOWLEDGE SYNTHESIS: ASSIGNING CITATION IDS ---")
+    
+    # operator.add sayesinde burada tüm dökümanlar (Web + Pinecone) bir arada
+    all_docs:List[Chunk] = state.get("retrieved_docs", [])
+    
+    if not all_docs:
+        return {"retrieved_docs": []}
+
+    # Her dökümana bir 'citation_id' atıyoruz
+    for i, doc in enumerate(all_docs):
+        # Metadata içine yeni bir alan ekleyebilirsin veya content'in başına gömebilirsin
+        # Öneri: Metadata içine 'ref_id' eklemek en temizidir.
+        doc.metadata.citation_id = f"Ref-{i+1}"
+        
+        # 8B modelin daha kolay görmesi için içeriğin en başına da ekleyelim
+        prefix = f"[[SOURCE ID: {doc.metadata.citation_id}]] | SOURCE: {doc.metadata.source}\n"
+        if not doc.content.startswith("[[SOURCE ID:"):
+            doc.content = prefix + doc.content
+
+    logger.info(f"Assigned Citation IDs to {len(all_docs)} documents.")
+
+    # Artık 'retrieved_docs' içindeki her chunk'ın bir kimliği var.
+    return {"retrieved_docs": all_docs}
 
 def retrieval_grader_node(state: GraphState):
     """Arama kalitesini puanlar (Retry mi yoksa Fusion mı?)."""

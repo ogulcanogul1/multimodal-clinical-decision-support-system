@@ -10,6 +10,7 @@ class ChunkMetadata:
     end_index: int
     total_doc_size: int
     page_number: Optional[int] = None
+    citation_id:Optional[str]
 
 @dataclass
 class Chunk:
