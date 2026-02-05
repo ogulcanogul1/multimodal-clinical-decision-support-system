@@ -27,3 +27,6 @@ pandas>=2.2.0
 pytest
 langchain-huggingface
 langchain-ollama
+mlflow
+matplotlib
+scikit-learn
