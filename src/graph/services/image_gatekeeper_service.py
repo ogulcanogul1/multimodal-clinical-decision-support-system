@@ -20,7 +20,6 @@ def image_gatekeeper_service(state: GraphState):
     vlm = OllamaLLMFactory.image_gatekeeper_llm()
     base64_image = encode_image(image_path)
     
-    # 🎯 DEĞİŞKENLERİ PROMPTA TANITIYORUZ
     instruction = """You are a professional medical image classification expert.
     Analyze the provided image and strictly determine the following three parameters:
 

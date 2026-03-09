@@ -5,6 +5,7 @@ from src.graph.services.hybrid_search_service import hybrid_search_service
 from src.graph.services.web_research_service import web_research_service
 from src.graph.services.retrieval_grader import retrieval_grader_service
 from src.graph.services.image_gatekeeper_service import image_gatekeeper_service
+from src.graph.services.mlp_control_service import mlp_control_service
 
 from src import logger
 from src.schemas.chunk import Chunk
@@ -52,7 +53,7 @@ def knowledge_synthesis_node(state: GraphState):
 
 def retrieval_grader_node(state: GraphState):
     """Arama kalitesini puanlar (Retry mi yoksa Fusion mı?)."""
-    retrieval_grader_service(state=state)
+    return retrieval_grader_service(state=state)
 
 # --- VISION & ANALYTICS (GATEKEEPER CONTROLLED) ---
 def image_gatekeeper_node(state: GraphState):
@@ -69,7 +70,7 @@ def image_skip_node(state: GraphState):
 
 def lab_gatekeeper_node(state: GraphState):
     """Lab verisi tutarlılığını kontrol eder."""
-    pass
+    return mlp_control_service(state=state)
 
 def lab_analyzer_node(state: GraphState):
     """MLP analizi ve Feature Importance çıkarır."""

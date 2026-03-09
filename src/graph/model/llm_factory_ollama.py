@@ -1,7 +1,8 @@
 from enum import Enum
 from langchain_ollama import ChatOllama
 from src.schemas.node_schemas.rag_schemas import OptimizedQueries,Grade
-from src.schemas.node_schemas.gate_keeper_schemas import ImageAnalysis
+from src.schemas.node_schemas.gate_keeper_schemas import ImageAnalysis, LabReport
+
 
 
 class OllamaModelNames(str,Enum):
@@ -31,3 +32,14 @@ class OllamaLLMFactory:
             format="json"
         )
         return vlm.with_structured_output(ImageAnalysis)
+    
+    @staticmethod
+    def lab_extractor_llm():
+        """Laboratuvar raporlarından (PDF metni veya OCR) kesin veri çıkaran LLM."""
+        llm = ChatOllama(
+            model=OllamaModelNames.LLAMA_8B, # veya llama3.2, sisteminde hangisi varsa
+            temperature=0.0,     # Veri çıkarma işleminde YARATICILIK İSTEMİYORUZ!
+            format="json"        # Kesinlikle JSON dönecek
+        )
+        # LLM'i hazırladığımız LabReport şemasına mühürlüyoruz
+        return llm.with_structured_output(LabReport)
