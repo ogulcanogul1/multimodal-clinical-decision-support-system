@@ -23,6 +23,7 @@ dependencies = [
     "rank-bm25>=0.2.2",
     "safetensors>=0.4.5",
     "scikit-learn>=1.7.2",
+    "seaborn>=0.13.2",
     "sentence-transformers==3.3.1",
     "tokenizers>=0.21.0,<0.22.0",
     "torch>=2.2.0",

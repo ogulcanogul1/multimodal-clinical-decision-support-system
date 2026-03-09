@@ -4,6 +4,8 @@ from src.graph.services.query_optimizer_service import query_optimizer_service
 from src.graph.services.hybrid_search_service import hybrid_search_service
 from src.graph.services.web_research_service import web_research_service
 from src.graph.services.retrieval_grader import retrieval_grader_service
+from src.graph.services.image_gatekeeper_service import image_gatekeeper_service
+
 from src import logger
 from src.schemas.chunk import Chunk
 from typing import List
@@ -55,7 +57,7 @@ def retrieval_grader_node(state: GraphState):
 # --- VISION & ANALYTICS (GATEKEEPER CONTROLLED) ---
 def image_gatekeeper_node(state: GraphState):
     """Görüntü kalitesini kontrol eder."""
-    pass
+    return image_gatekeeper_service(state=state)
 
 def image_analyzer_node(state: GraphState):
     """CNN analizi ve Grad-CAM üretimini yapar."""

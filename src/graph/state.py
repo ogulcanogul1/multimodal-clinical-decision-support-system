@@ -24,10 +24,16 @@ class GraphState(TypedDict):
     rag_weight: float           # Fusion'da RAG'in etki katsayısı
     
     # --- MULTIMODAL ANALİZ & XAI (AÇIKLANABİLİRLİK) ---
+    image_path:Optional[str]
     image_features: Optional[Any]     # CNN öznitelik vektörü
     grad_cam_path: Optional[str]      # Gradcam dosya yolu
     lab_features: Optional[Any]       # MLP öznitelik vektörü
     feature_importance: Dict[str, float] # Karara en çok etki eden lab parametreleri
+
+    # Image_gatekeeper_node
+    modality:Optional[str]
+    is_valid:Optional[bool]
+    vlm_note:Optional[str]
     
     # --- AGENTIC REASONING & SELF-CORRECTION ---
     raw_diagnosis: str                # Diagnostic Agent'ın ilk çıktısı
