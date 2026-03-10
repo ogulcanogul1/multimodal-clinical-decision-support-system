@@ -43,3 +43,16 @@ class OllamaLLMFactory:
         )
         # LLM'i hazırladığımız LabReport şemasına mühürlüyoruz
         return llm.with_structured_output(LabReport)
+    
+    @staticmethod
+    def diagnostic_llm():
+        """
+        Başhekim (Diagnostic Agent) Modeli:
+        Sistemin en zeki modeli olmalıdır. Tüm verileri sentezleyip rapor yazar.
+        Öneri: llama3.1 (8b) veya llama3.2
+        """
+        return ChatOllama(
+            model=OllamaModelNames.LLAMA_8B, # Kendi bilgisayarındaki modele göre burayı değiştirebilirsin
+            temperature=0.2,  # Biraz empatik yazabilmesi için 0.2 verdik, ama çok uydurmaması lazım
+            max_tokens=2048
+        )

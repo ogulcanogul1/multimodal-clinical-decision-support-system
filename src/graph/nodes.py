@@ -9,6 +9,7 @@ from src.graph.services.mlp_control_service import mlp_control_service
 from src.graph.services.lab_analyzer_service import lab_analyzer_service
 from src.graph.services.image_analyzer_service import image_analyzer_service
 from src.graph.services.adaptive_fusion_service import adaptive_fusion_service
+from src.graph.services.diagnostic_agent_service import diagnostic_agent_service
 
 
 from src import logger
@@ -107,7 +108,7 @@ def adaptive_fusion_node(state: GraphState):
 
 def diagnostic_agent_node(state: GraphState):
     """LLM ile klinik teşhis üretir."""
-    pass
+    return diagnostic_agent_service(state=state)
 
 def attribution_node(state: GraphState):
     """Tanıyı kanıtlarla (XAI) eşleştirir."""
