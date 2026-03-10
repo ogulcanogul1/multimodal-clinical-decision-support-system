@@ -35,10 +35,12 @@ class GraphState(TypedDict):
     modality:Optional[str]
     is_valid:Optional[bool]
     vlm_note:Optional[str]
+    image_analysis_results:Optional[Any]
 
     # LAB
     lab_data:Optional[LabReport]
     lab_is_valid:Optional[bool]
+    lab_analysis_results:Optional[Any]
     
     # --- AGENTIC REASONING & SELF-CORRECTION ---
     raw_diagnosis: str                # Diagnostic Agent'ın ilk çıktısı

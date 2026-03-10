@@ -7,6 +7,7 @@ from src.graph.services.retrieval_grader import retrieval_grader_service
 from src.graph.services.image_gatekeeper_service import image_gatekeeper_service
 from src.graph.services.mlp_control_service import mlp_control_service
 from src.graph.services.lab_analyzer_service import lab_analyzer_service
+from src.graph.services.image_analyzer_service import image_analyzer_service
 
 
 from src import logger
@@ -64,11 +65,19 @@ def image_gatekeeper_node(state: GraphState):
 
 def image_analyzer_node(state: GraphState):
     """CNN analizi ve Grad-CAM üretimini yapar."""
-    pass
+    return image_analyzer_service(state=state)
 
 def image_skip_node(state: GraphState):
-    """Görüntü yoksa veya kötüyse pas geçer."""
-    pass
+    """Görüntü (Röntgen, MR vb.) yoksa veya geçersizse CNN analizini güvenlice pas geçer."""
+    print("\n⏭️ [IMAGE SKIP] Geçerli bir medikal görüntü (Röntgen/MR/OCT) bulunamadı, Görüntü Uzmanları (CNN) atlanıyor...")
+    
+    # En sondaki Uzman Doktor (Final LLM) ajanının halüsinasyon görmesini engellemek için
+    # State'teki görüntü analizi alanını net bir "Sistem Notu" ile dolduruyoruz.
+    skip_message = {
+        "Sistem Notu": "Hastaya ait geçerli bir radyolojik veya medikal görüntü (Röntgen, MR, Göz Dibi vb.) tespit edilmediği için görüntü tabanlı (CNN) hastalık riski analizi yapılmamıştır."
+    }
+    
+    return {"image_analysis_results": skip_message}
 
 def lab_gatekeeper_node(state: GraphState):
     """Lab verisi tutarlılığını kontrol eder."""
@@ -79,8 +88,16 @@ def lab_analyzer_node(state: GraphState):
     return lab_analyzer_service(state=state)
 
 def lab_skip_node(state: GraphState):
-    """Lab verisi yoksa veya kötüyse pas geçer."""
-    pass
+    """Lab verisi yoksa veya kötüyse MLP analizini güvenlice pas geçer."""
+    print("\n⏭️ [LAB SKIP] Geçerli bir tahlil bulunamadı, Laboratuvar Uzmanları (MLP) atlanıyor...")
+    
+    # En sondaki Uzman Doktor (Final LLM) ajanının kafası karışmasın diye,
+    # State'teki ilgili alanı "Bilgi" notuyla dolduruyoruz.
+    skip_message = {
+        "Sistem Notu": "Hastaya ait geçerli bir laboratuvar (kan/idrar) tahlili belgesi tespit edilmediği için MLP tabanlı hastalık riski analizi yapılmamıştır."
+    }
+    
+    return {"lab_analysis_results": skip_message}
 
 # --- FUSION & REASONING ---
 def adaptive_fusion_node(state: GraphState):
