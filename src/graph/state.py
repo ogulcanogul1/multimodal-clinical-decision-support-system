@@ -48,6 +48,7 @@ class GraphState(TypedDict):
    # Self Critique
     critique_status:Optional[str]
     critique_feedback:Optional[str]
+    conflict_retry_count:Optional[int]
     
     # --- ÇIKTI ---
     final_report: str                 # Atıflı, kanıtlı ve XAI destekli rapor

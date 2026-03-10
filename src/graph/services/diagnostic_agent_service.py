@@ -10,6 +10,9 @@ def diagnostic_agent_service(state: GraphState):
     and points out diagnostic limitations if a modality is missing.
     """
     print("\n👨‍⚕️ [DIAGNOSTIC AGENT] The Chief Medical Officer (LLM) is writing the final report...")
+
+    if state["conflict_retry_count"] >= 3:
+        return {"final_report": final_report}
     
     # 1. Extract Synthesized Data and User Query from State
     context = state.get("fused_clinical_context", {})
