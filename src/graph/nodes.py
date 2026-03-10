@@ -10,6 +10,7 @@ from src.graph.services.lab_analyzer_service import lab_analyzer_service
 from src.graph.services.image_analyzer_service import image_analyzer_service
 from src.graph.services.adaptive_fusion_service import adaptive_fusion_service
 from src.graph.services.diagnostic_agent_service import diagnostic_agent_service
+from src.graph.services.self_critique_service import self_critique_service
 
 
 from src import logger
@@ -76,8 +77,8 @@ def image_skip_node(state: GraphState):
     # En sondaki Uzman Doktor (Final LLM) ajanının halüsinasyon görmesini engellemek için
     # State'teki görüntü analizi alanını net bir "Sistem Notu" ile dolduruyoruz.
     skip_message = {
-        "Sistem Notu": "Hastaya ait geçerli bir radyolojik veya medikal görüntü (Röntgen, MR, Göz Dibi vb.) tespit edilmediği için görüntü tabanlı (CNN) hastalık riski analizi yapılmamıştır."
-    }
+    "System_Note": "Image-based (CNN) disease risk analysis was not performed because no valid radiological or medical image (X-ray, MRI, Fundus, etc.) belonging to the patient was detected."
+}
     
     return {"image_analysis_results": skip_message}
 
@@ -96,8 +97,8 @@ def lab_skip_node(state: GraphState):
     # En sondaki Uzman Doktor (Final LLM) ajanının kafası karışmasın diye,
     # State'teki ilgili alanı "Bilgi" notuyla dolduruyoruz.
     skip_message = {
-        "Sistem Notu": "Hastaya ait geçerli bir laboratuvar (kan/idrar) tahlili belgesi tespit edilmediği için MLP tabanlı hastalık riski analizi yapılmamıştır."
-    }
+    "System_Note": "MLP-based disease risk analysis was not performed because no valid laboratory (blood/urine) test document belonging to the patient was detected."
+}
     
     return {"lab_analysis_results": skip_message}
 
@@ -117,7 +118,7 @@ def attribution_node(state: GraphState):
 # --- SELF-CORRECTION ---
 def self_critique_node(state: GraphState):
     """Halüsinasyon ve çelişki kontrolü yapar."""
-    pass
+    return self_critique_service(state=state)
 
 def conflict_resolver_node(state: GraphState):
     """Çelişkileri çözmek için akışı DiagnosticAgent'a geri gönderir."""

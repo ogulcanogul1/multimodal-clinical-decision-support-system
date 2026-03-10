@@ -45,11 +45,9 @@ class GraphState(TypedDict):
     #Adaptive Fusion
     fused_clinical_context:Optional[Dict]
     
-    # --- AGENTIC REASONING & SELF-CORRECTION ---
-    raw_diagnosis: str                # Diagnostic Agent'ın ilk çıktısı
-    hallucination_score: float        # Self-Critique tarafından belirlenir
-    modality_conflicts: List[str]     # Çelişen bilgiler (Örn: Görüntü X diyor, Lab Y)
-    is_verified: bool                 # Nihai onay bayrağı
+   # Self Critique
+    critique_status:Optional[str]
+    critique_feedback:Optional[str]
     
     # --- ÇIKTI ---
     final_report: str                 # Atıflı, kanıtlı ve XAI destekli rapor
