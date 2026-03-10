@@ -41,6 +41,9 @@ class GraphState(TypedDict):
     lab_data:Optional[LabReport]
     lab_is_valid:Optional[bool]
     lab_analysis_results:Optional[Any]
+
+    #Adaptive Fusion
+    fused_clinical_context:Optional[Dict]
     
     # --- AGENTIC REASONING & SELF-CORRECTION ---
     raw_diagnosis: str                # Diagnostic Agent'ın ilk çıktısı
