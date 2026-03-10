@@ -1,6 +1,7 @@
 from typing import List, Optional, TypedDict, Dict, Any, Annotated
 import operator
 from src.schemas.document import Document
+from src.schemas.node_schemas.gate_keeper_schemas import LabReport
 
 class GraphState(TypedDict):
     # --- HAM GİRİŞLER ---
@@ -34,6 +35,10 @@ class GraphState(TypedDict):
     modality:Optional[str]
     is_valid:Optional[bool]
     vlm_note:Optional[str]
+
+    # LAB
+    lab_data:Optional[LabReport]
+    lab_is_valid:Optional[bool]
     
     # --- AGENTIC REASONING & SELF-CORRECTION ---
     raw_diagnosis: str                # Diagnostic Agent'ın ilk çıktısı

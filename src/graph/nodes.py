@@ -6,6 +6,8 @@ from src.graph.services.web_research_service import web_research_service
 from src.graph.services.retrieval_grader import retrieval_grader_service
 from src.graph.services.image_gatekeeper_service import image_gatekeeper_service
 from src.graph.services.mlp_control_service import mlp_control_service
+from src.graph.services.lab_analyzer_service import lab_analyzer_service
+
 
 from src import logger
 from src.schemas.chunk import Chunk
@@ -74,7 +76,7 @@ def lab_gatekeeper_node(state: GraphState):
 
 def lab_analyzer_node(state: GraphState):
     """MLP analizi ve Feature Importance çıkarır."""
-    pass
+    return lab_analyzer_service(state=state)
 
 def lab_skip_node(state: GraphState):
     """Lab verisi yoksa veya kötüyse pas geçer."""

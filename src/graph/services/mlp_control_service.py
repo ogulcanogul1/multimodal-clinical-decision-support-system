@@ -10,6 +10,12 @@ def mlp_control_service(state: GraphState):
     
     # Varsayalım ki bir önceki adımdan PDF'in metni okundu ve state'e eklendi
     raw_lab_text = state.get("raw_document_text", "")
+
+    if raw_lab_text == "":
+        return {
+            "lab_data": None, 
+            "lab_is_valid": False
+        }
     
     extractor_llm = OllamaLLMFactory.lab_extractor_llm()
     
@@ -55,7 +61,7 @@ def mlp_control_service(state: GraphState):
 
         return {
             "lab_data": extracted_data, 
-            "is_valid": True
+            "lab_is_valid": True
         }
         
     except Exception as e:
