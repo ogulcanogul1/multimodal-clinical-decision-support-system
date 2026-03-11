@@ -1,5 +1,5 @@
 import fitz
-
+from src.graph.state import GraphState
 def extract_text_with_pymupdf(pdf_path: str) -> str:
     """
     Belirtilen PDF dosyasını okur ve metinleri çıkarır.
@@ -23,3 +23,23 @@ def extract_text_with_pymupdf(pdf_path: str) -> str:
     except Exception as e:
         print(f"❌ [PDF PARSER] Dosya okuma hatası: {str(e)}")
         return ""
+    
+def document_loader_service(state:GraphState):
+     # State'ten dosya yolunu al (Örn: "data/uploads/hasta_tahlil.pdf")
+    # Bunu GraphState sınıfına 'pdf_path' olarak eklemelisin.
+    pdf_path = state.get("pdf_path")
+    
+    if not pdf_path or not os.path.exists(pdf_path):
+        print("   ⚠️ Geçerli bir PDF yolu bulunamadı.")
+        return {"raw_document_text": ""}
+
+    # PyMuPDF ile metni çıkar
+    extracted_text = extract_text_with_pymupdf(pdf_path)
+    
+    if extracted_text:
+        print("   ✅ PDF başarıyla okundu ve metin çıkarıldı.")
+    else:
+        print("   ⚠️ PDF okundu ancak içinden metin çıkarılamadı (Taranmış/Görsel formatta olabilir).")
+
+    # Çıkarılan metni bir sonraki düğüm (mlp_control_service) için State'e yaz
+    return {"raw_document_text": extracted_text}

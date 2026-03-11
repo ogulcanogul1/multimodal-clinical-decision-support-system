@@ -7,6 +7,8 @@ class GraphState(TypedDict):
     # --- HAM GİRİŞLER ---
     query: str
     image_path: Optional[str]
+    pdf_path: Optional[str]           # EKLENDİ (pdf_extract için)
+    raw_document_text: Optional[str]  # EKLENDİ (pdf_extract çıktısı)
     lab_results: Optional[Dict[str, float]]
     
     active_branches: List[str] 
@@ -22,33 +24,33 @@ class GraphState(TypedDict):
     web_results: List[Dict[str, Any]]
     retrieval_retry_count: int # Döngü sayacı
     is_search_reliable: bool 
-    rag_weight: float           # Fusion'da RAG'in etki katsayısı
+    rag_weight: float          # Fusion'da RAG'in etki katsayısı
     
     # --- MULTIMODAL ANALİZ & XAI (AÇIKLANABİLİRLİK) ---
-    image_path:Optional[str]
     image_features: Optional[Any]     # CNN öznitelik vektörü
     grad_cam_path: Optional[str]      # Gradcam dosya yolu
     lab_features: Optional[Any]       # MLP öznitelik vektörü
     feature_importance: Dict[str, float] # Karara en çok etki eden lab parametreleri
 
     # Image_gatekeeper_node
-    modality:Optional[str]
-    is_valid:Optional[bool]
-    vlm_note:Optional[str]
-    image_analysis_results:Optional[Any]
+    modality: Optional[str]
+    is_valid: Optional[bool]
+    vlm_note: Optional[str]
+    image_analysis_results: Optional[Any]
 
     # LAB
-    lab_data:Optional[LabReport]
-    lab_is_valid:Optional[bool]
-    lab_analysis_results:Optional[Any]
+    lab_data: Optional[LabReport]
+    lab_is_valid: Optional[bool]
+    lab_analysis_results: Optional[Any]
 
-    #Adaptive Fusion
-    fused_clinical_context:Optional[Dict]
+    # Adaptive Fusion
+    fused_clinical_context: Optional[Dict]
     
-   # Self Critique
-    critique_status:Optional[str]
-    critique_feedback:Optional[str]
-    conflict_retry_count:Optional[int]
+    # Self Critique & Conflict Resolution
+    critique_status: Optional[str]
+    critique_feedback: Optional[str]
+    conflict_retry_count: Optional[int]
+    resolution_guidance: Optional[str] # EKLENDİ (Başhekim için düzeltme yönergesi)
     
     # --- ÇIKTI ---
     final_report: str                 # Atıflı, kanıtlı ve XAI destekli rapor

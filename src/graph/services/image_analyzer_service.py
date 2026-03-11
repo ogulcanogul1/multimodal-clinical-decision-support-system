@@ -57,17 +57,10 @@ def preprocess_image(image_path):
 # 3. LANGGRAPH CNN NODE
 # ==========================================
 def image_analyzer_service(state: GraphState):
-    """
-    Gatekeeper'dan gelen veriye göre ilgili CNN modelini/modellerini çalıştırır.
-    Eğer görüntü LUNG ise, önce Gatekeeper modelini çalıştırır. Gatekeeper "Normal" derse,
-    diğer 7 modeli atlar. "Abnormal" derse 7 uzman modeli sırayla çalıştırır.
-    """
-    
     modality = state.get("modality", "OTHER")
     is_valid = state.get("is_valid", False)
     image_path = state.get("image_path")
     
-    # 1. Güvenlik Kontrolü: Görüntü geçersizse veya OTHER ise analizi pas geç
     if not is_valid or modality == "OTHER" or modality not in CNN_CONFIG:
         return {"image_analysis_results": {"System_Note": "No valid radiological image detected. CNN analysis skipped."}}
     
@@ -79,30 +72,29 @@ def image_analyzer_service(state: GraphState):
     
     analysis_results = {}
 
-    # Yardımcı Fonksiyon: Tek bir modeli çalıştırıp tahmini döndürür
-    def run_inference(model_path, class_mapping=None):
+    # DÜZELTME 1: tensor ve device parametre olarak alındı
+    def run_inference(model_path, tensor, dev, class_mapping=None):
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model not found: {model_path}")
             
-        model = torch.load(model_path, map_location=device)
+        model = torch.load(model_path, map_location=dev)
         model.eval()
         
         with torch.no_grad():
-            outputs = model(input_tensor)
+            outputs = model(tensor)
             probabilities = F.softmax(outputs, dim=1)[0]
             confidence, predicted_idx = torch.max(probabilities, 0)
             
             pred_idx_val = predicted_idx.item()
             conf_val = confidence.item() * 100
             
-            # Sınıf haritası verilmişse (Brain, Eye, Lung Gatekeeper) ismi al, yoksa Binary (Lung Specialists) dön
+            # DÜZELTME 2: Return bloğu düzeltildi
             if class_mapping:
                 pred_label = class_mapping.get(pred_idx_val, "Unknown")
             else:
                 pred_label = "Positive" if pred_idx_val == 1 else "Negative"
                 
             return pred_label, conf_val
-
 
     # ==============================================
     # 🌟 GÖĞÜS (LUNG) İÇİN ÖZEL GATEKEEPER MANTIĞI
@@ -111,7 +103,7 @@ def image_analyzer_service(state: GraphState):
         gatekeeper_config = CNN_CONFIG["LUNG"]["Gatekeeper"]
         try:
             print("   -> Running Lung Gatekeeper...")
-            pred_label, conf_val = run_inference(gatekeeper_config["path"], gatekeeper_config["classes"])
+            pred_label, conf_val = run_inference(gatekeeper_config["path"], input_tensor, device, gatekeeper_config["classes"])
             
             if pred_label == "Normal":
                 print(f"   🟢 Gatekeeper Result: Normal (Confidence: {conf_val:.1f}%). Skipping specialists.")
@@ -120,12 +112,11 @@ def image_analyzer_service(state: GraphState):
                 print(f"   🔴 Gatekeeper Result: Abnormal (Confidence: {conf_val:.1f}%). Running 7 Specialists...")
                 analysis_results["Lung_General_Status"] = f"Abnormal (Confidence: {conf_val:.1f}%)"
                 
-                # Gatekeeper "Hasta" dedi, 7 modeli sırayla çalıştır
                 specialists = CNN_CONFIG["LUNG"]["Specialists"]
                 for spec_name, spec_config in specialists.items():
                     try:
-                        spec_pred, spec_conf = run_inference(spec_config["path"])
-                        # Sadece "Positive" olanları (hastalık tespit edilenleri) rapora ekleyelim ki rapor kirlenmesin
+                        # DÜZELTME: parametreler eklendi
+                        spec_pred, spec_conf = run_inference(spec_config["path"], input_tensor, device)
                         if spec_pred == "Positive":
                             analysis_results[f"Finding_{spec_name}"] = f"Detected (Confidence: {spec_conf:.1f}%)"
                             print(f"      🚨 {spec_name}: Detected ({spec_conf:.1f}%)")
@@ -135,7 +126,6 @@ def image_analyzer_service(state: GraphState):
         except Exception as e:
             analysis_results["Lung_General_Status"] = f"Gatekeeper Error: {str(e)}"
 
-
     # ==============================================
     # 🧠 BEYİN VE GÖZ İÇİN STANDART MANTIK
     # ==============================================
@@ -143,7 +133,8 @@ def image_analyzer_service(state: GraphState):
         models_to_run = CNN_CONFIG[modality]
         for model_name, config in models_to_run.items():
             try:
-                pred_label, conf_val = run_inference(config["path"], config["classes"])
+                # DÜZELTME: parametreler eklendi
+                pred_label, conf_val = run_inference(config["path"], input_tensor, device, config["classes"])
                 analysis_results[model_name] = f"{pred_label} (Confidence: {conf_val:.1f}%)"
                 print(f"   -> {model_name}: {pred_label} ({conf_val:.1f}%)")
             except Exception as e:
