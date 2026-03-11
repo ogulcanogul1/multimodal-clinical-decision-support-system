@@ -10,7 +10,7 @@ def conflict_resolver_service(state: GraphState):
     
     # 1. State'ten Denetçi Geri Bildirimini ve Deneme Sayısını Al
     feedback = state.get("critique_feedback", "Bilinmeyen bir tıbbi tutarsızlık veya halüsinasyon tespit edildi.")
-    retry_count = state.get("retry_count", 0)
+    retry_count = state.get("conflict_retry_count", 0)
     
     # ==========================================
     # 2. SONSUZ DÖNGÜ KORUMASI (Fail-Safe)
