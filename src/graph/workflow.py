@@ -86,7 +86,8 @@ workflow.add_conditional_edges(
     {
         NodeNames.QUERY_OPTIMIZER.value: NodeNames.QUERY_OPTIMIZER.value,
         NodeNames.CNN_CONTROL.value: NodeNames.CNN_CONTROL.value,
-        NodeNames.MLP_CONTROL.value: NodeNames.MLP_CONTROL.value
+        #NodeNames.MLP_CONTROL.value: NodeNames.MLP_CONTROL.value
+        NodeNames.PDF_EXTRACT.value: NodeNames.PDF_EXTRACT.value
     }
 )
 
@@ -102,6 +103,7 @@ workflow.add_conditional_edges(
     {"valid": NodeNames.LAB_ANALYZER.value, "invalid": NodeNames.LAB_SKIP.value}
 )
 
+workflow.add_edge(NodeNames.PDF_EXTRACT.value,NodeNames.MLP_CONTROL.value)
 workflow.add_edge(NodeNames.QUERY_OPTIMIZER.value, NodeNames.HYBRID_SEARCH.value)
 workflow.add_edge(NodeNames.QUERY_OPTIMIZER.value, NodeNames.WEB_RESEARCH.value)
 workflow.add_edge(NodeNames.HYBRID_SEARCH.value, NodeNames.KNOWLEDGE_SYNTHESIS.value)
