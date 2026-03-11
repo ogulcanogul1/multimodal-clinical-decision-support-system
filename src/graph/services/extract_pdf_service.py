@@ -1,5 +1,7 @@
 import fitz
 from src.graph.state import GraphState
+import os
+
 def extract_text_with_pymupdf(pdf_path: str) -> str:
     """
     Belirtilen PDF dosyasını okur ve metinleri çıkarır.
