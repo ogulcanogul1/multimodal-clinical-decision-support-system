@@ -1,6 +1,5 @@
 from typing import List, Optional, TypedDict, Dict, Any, Annotated
 import operator
-from src.schemas.document import Document
 from src.schemas.node_schemas.gate_keeper_schemas import LabReport
 from src.schemas.chunk import Chunk
 

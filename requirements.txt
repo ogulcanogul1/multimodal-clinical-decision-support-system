@@ -31,3 +31,4 @@ mlflow
 matplotlib
 scikit-learn
 seaborn
+langchain-openai

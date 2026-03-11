@@ -1,7 +1,7 @@
 import json
 from langchain_core.prompts import ChatPromptTemplate
 from src.graph.state import GraphState
-from src.graph.model.llm_factory_ollama import OllamaLLMFactory
+from src.graph.model.model_abstraction import ActiveLLMFactory
 from src.schemas.node_schemas.self_critique import CritiqueOutput
 
 def self_critique_service(state: GraphState):
@@ -33,7 +33,7 @@ If the report is 100% safe, accurate, and matches the facts, set status to "veri
 
     try:
         # Factory zaten structured_output gömülü modeli veriyor!
-        llm = OllamaLLMFactory.critique_llm()
+        llm = ActiveLLMFactory.critique_llm()
         chain = prompt | llm
         
         # Sonuç doğrudan Pydantic objesi (CritiqueOutput) olarak gelir

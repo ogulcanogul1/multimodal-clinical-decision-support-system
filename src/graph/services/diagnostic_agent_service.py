@@ -1,7 +1,8 @@
 from langchain_core.prompts import ChatPromptTemplate
 from src.graph.state import GraphState
 # Kendi LLM factory yolunu buraya eklemelisin
-from src.graph.model.llm_factory_ollama import OllamaLLMFactory 
+from src.graph.model.model_abstraction import ActiveLLMFactory
+
 
 def diagnostic_agent_service(state: GraphState):
     """
@@ -24,7 +25,7 @@ def diagnostic_agent_service(state: GraphState):
 
     lab_anomalies = context.get("Lab_Anomalies", [])
     image_anomalies = context.get("Image_Anomalies", [])
-    literature = context.get("Literature_Support", "")
+    final_retrieved_docs = context.get("final_retrieved_docs", "")
     
     # 2. Build a Clean Clinical Table for the LLM
     if not lab_anomalies and not image_anomalies:
@@ -51,7 +52,7 @@ CLINICAL PICTURE:
 {clinical_summary}
 
 MEDICAL LITERATURE (RAG):
-{literature}
+{final_retrieved_docs}
 
 {guidance}
 Please format your final report strictly using the following structure:
@@ -67,7 +68,7 @@ Please format your final report strictly using the following structure:
     ])
     
     try:
-        llm = OllamaLLMFactory.diagnostic_llm()
+        llm = ActiveLLMFactory.diagnostic_llm()
         chain = prompt | llm
         
         response = chain.invoke({

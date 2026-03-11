@@ -9,18 +9,19 @@ from src.schemas.node_schemas.self_critique import CritiqueOutput
 class OllamaModelNames(str,Enum):
     LLAMA_8B= "llama3.1:8b"
     LLAMA_VISION = "llama3.2-vision" 
+    LLAMA_3_2= "llama3.2"
 class OllamaLLMFactory:
 
     @staticmethod
     def query_optimizer_llm():
 
-        llm = ChatOllama(model=OllamaModelNames.LLAMA_8B,temperature=0.1,format="json")
+        llm = ChatOllama(model=OllamaModelNames.LLAMA_3_2,temperature=0.1,format="json")
         
         return llm.with_structured_output(OptimizedQueries)
     
     @staticmethod
     def retrieval_grader_llm():
-        llm = ChatOllama(model=OllamaModelNames.LLAMA_8B,temperature=0.1,format="json")
+        llm = ChatOllama(model=OllamaModelNames.LLAMA_3_2,temperature=0.1,format="json")
         return llm.with_structured_output(Grade)
     
     @staticmethod
@@ -38,7 +39,7 @@ class OllamaLLMFactory:
     def lab_extractor_llm():
         """Laboratuvar raporlarından (PDF metni veya OCR) kesin veri çıkaran LLM."""
         llm = ChatOllama(
-            model=OllamaModelNames.LLAMA_8B, # veya llama3.2, sisteminde hangisi varsa
+            model=OllamaModelNames.LLAMA_3_2, # veya llama3.2, sisteminde hangisi varsa
             temperature=0.0,     # Veri çıkarma işleminde YARATICILIK İSTEMİYORUZ!
             format="json"        # Kesinlikle JSON dönecek
         )
@@ -53,7 +54,7 @@ class OllamaLLMFactory:
         Öneri: llama3.1 (8b) veya llama3.2
         """
         return ChatOllama(
-            model=OllamaModelNames.LLAMA_8B, # Kendi bilgisayarındaki modele göre burayı değiştirebilirsin
+            model=OllamaModelNames.LLAMA_3_2, # Kendi bilgisayarındaki modele göre burayı değiştirebilirsin
             temperature=0.2,  # Biraz empatik yazabilmesi için 0.2 verdik, ama çok uydurmaması lazım
             max_tokens=2048
         )
@@ -65,8 +66,9 @@ class OllamaLLMFactory:
         sınıfına kilitlenmiş (structured) denetçi modeli döner.
         """
         llm = ChatOllama(
-            model=OllamaModelNames.LLAMA_8B, 
+            model=OllamaModelNames.LLAMA_3_2, 
             temperature=0.0
         )
         # Sınıf zaten belli, doğrudan gömülü şekilde veriyoruz! Parametreye gerek yok.
         return llm.with_structured_output(CritiqueOutput)
+

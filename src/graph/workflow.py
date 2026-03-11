@@ -31,25 +31,52 @@ def lab_gate_logic(state: GraphState) -> Literal["valid", "invalid"]:
 def retrieval_quality_logic(state: GraphState) -> Literal["retry", "continue"]:
     """
     Grader'dan gelen sonuçlara göre akışa karar verir.
-    Eğer 1'den fazla alakalı döküman yoksa tekrar arama (retry) yapar.
     """
-    relevant_docs = state.get("retrieved_docs", [])
-    retry_count = state.get("retry_count", 0)
-    MAX_RETRY = 3 
+    # 1. Yeni State'e göre doğru değişkenleri çekiyoruz
+    final_docs = state.get("final_retrieved_docs") 
+    retry_count = state.get("retrieval_retry_count", 0)
+    MAX_RETRY = 2 # Grader servisimizde limiti 2 (toplam 3 tur) yapmıştık
 
-    logger.info(f"--- EVALUATING RETRIEVAL QUALITY (Retry Count: {retry_count}) ---")
+    logger.info(f"--- EVALUATING RETRIEVAL QUALITY (Retry Count: {retry_count}/{MAX_RETRY}) ---")
 
-    if len(relevant_docs) <= 1 and retry_count < MAX_RETRY:
-        logger.warning(f"Yetersiz döküman ({len(relevant_docs)} adet). Retry yoluna giriliyor...")
-        return "retry"
+    # 2. EĞER FINAL_DOCS ATANDIYSA (Devam Et)
+    # Grader başarılı olduysa veya limit dolduğu için zorla pes ettiyse
+    # final_docs None olmaktan çıkar (liste olur).
+    if final_docs is not None:
+        logger.info(f"Yeterli döküman bulundu ({len(final_docs)} adet) veya limit doldu. Adaptive Fusion'a geçiliyor.")
+        return "continue"
     
-    logger.info(f"Yeterli döküman bulundu veya limit doldu. Adaptive Fusion'a geçiliyor.")
-    return "continue"
+    # 3. EĞER FINAL_DOCS HALA NONE İSE (Başa Dön)
+    # Grader hiç geçerli döküman bulamamış ve sadece sayacı artırmış demektir.
+    logger.warning("Geçerli döküman bulunamadı. Retry yoluna (Query Optimizer) giriliyor...")
+    return "retry"
 
 def critique_logic(state: GraphState) -> Literal["conflict", "verified"]:
-    if state.get("has_hallucination") or state.get("modality_conflict"):
-        return "conflict"
-    return "verified"
+    """
+    Denetçi (Self-Critique) düğümünden çıkan karara göre akışı yönlendirir.
+    Eğer limit aşılmışsa, çelişki olsa bile sistemi sonsuz döngüden kurtarmak için bitirir.
+    """
+    status = state.get("critique_status", "conflict") # Güvenlik için varsayılanı conflict yapıyoruz
+    retry_count = state.get("conflict_retry_count", 0)
+    MAX_RETRY = 2 # Toplam 3 deneme hakkı (0, 1, 2)
+    
+    logger.info(f"--- ⚖️ EVALUATING CRITIQUE STATUS (Retry Count: {retry_count}/{MAX_RETRY}) ---")
+
+    # 1. DURUM: Denetçi raporu onayladıysa, her şey yolunda.
+    if status == "verified":
+        logger.info("✅ Rapor denetimden geçti. Akış sonlandırılıyor (__end__).")
+        return "verified"
+        
+    # 2. DURUM: Denetçi hata buldu AMA deneme hakkımız (limit) doldu (Fail-Safe)
+    if retry_count >= MAX_RETRY:
+        logger.error(f"🚨 Maksimum düzeltme denemesine ({MAX_RETRY}) ulaşıldı! Başhekim hatalı döngüden çıkamadı.")
+        logger.warning("Sonsuz döngüyü önlemek için akış zorla onaylanmış sayılarak sonlandırılıyor (__end__).")
+        # Burada sistemi kandırıp "verified" dönüyoruz ki LangGraph akışı bitirsin, başa sarmasın.
+        return "verified" 
+
+    # 3. DURUM: Denetçi hata buldu ve HALA deneme hakkımız var
+    logger.warning(f"🔄 Raporda tıbbi çelişki tespit edildi! Düzeltme talimatı için Conflict Resolver'a gidiliyor...")
+    return "conflict"
 
 # --- GRAPH KURULUMU ---
 

@@ -1,7 +1,8 @@
 from langchain_core.messages import HumanMessage
-from src.graph.model.llm_factory_ollama import OllamaLLMFactory
+from src.graph.model.model_abstraction import ActiveLLMFactory
 from src.schemas.node_schemas.gate_keeper_schemas import LabReport
 from src.graph.state import GraphState
+
 
 
 def mlp_control_service(state: GraphState):
@@ -17,7 +18,7 @@ def mlp_control_service(state: GraphState):
             "lab_is_valid": False
         }
     
-    extractor_llm = OllamaLLMFactory.lab_extractor_llm()
+    extractor_llm = ActiveLLMFactory.lab_extractor_llm()
     
     instruction = """You are an expert clinical data extraction assistant. 
     Analyze the provided unstructured laboratory report text and extract the data strictly into the requested JSON format.

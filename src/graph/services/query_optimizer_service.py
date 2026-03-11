@@ -1,6 +1,6 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
-from src.graph.model.llm_factory_ollama import OllamaLLMFactory
+from src.graph.model.model_abstraction import ActiveLLMFactory
 from src.graph.state import GraphState
 from src.graph.enum.system_status import SystemStatus
 from src.schemas.node_schemas.rag_schemas import OptimizedQueries
@@ -10,7 +10,7 @@ def query_optimizer_service(state: GraphState):
     logger.info("--- 🔍 QUERY OPTIMIZER STARTING ---")
     
     user_query = state.get("query")
-    llm = OllamaLLMFactory.query_optimizer_llm()
+    llm = ActiveLLMFactory.query_optimizer_llm()
     output_parser = PydanticOutputParser(pydantic_object=OptimizedQueries)
     
     system_prompt_content = """You are a Medical Query Transformer. Your ONLY mission is to convert the User Input into a dual-search strategy. You do not answer questions; you only generate search keys.
@@ -37,7 +37,7 @@ def query_optimizer_service(state: GraphState):
 
     Example 1:
     User Input: "My child has a whistling sound when breathing at night."
-    Output: {
+    Output: {{
     "vector_store_query": "Pediatric nocturnal wheezing and cough; differential diagnosis of asthma vs bronchiolitis; airway hyperresponsiveness pathophysiology; consider red flags and diagnostic workup.",
     "web_search_queries": [
         "GINA 2026 pediatric asthma guideline diagnosis management",
@@ -45,13 +45,13 @@ def query_optimizer_service(state: GraphState):
         "new pediatric inhaled bronchodilators approvals 2025 2026"
     ],
     "rationale": "Mapped lay description 'whistling breathing' to clinical term 'wheezing' for targeted retrieval."
-    }
+    }}
 
     The User Input can be in any language. Always translate and normalize it into professional medical English. Output must contain only English text inside the JSON values.
 
     Example 2:
     User Input: "Şiddetli karın ağrısı ve gözlerde sararma var."
-    Output: {
+    Output: {{
     "vector_store_query": "Acute abdominal pain with icterus: obstructive jaundice differential diagnosis including choledocholithiasis, cholangitis, and pancreatic head mass; biliary anatomy and imaging workup.",
     "web_search_queries": [
         "2026 guideline obstructive jaundice evaluation management",
@@ -59,7 +59,7 @@ def query_optimizer_service(state: GraphState):
         "pancreatic cancer early detection advances 2025 2026"
     ],
     "rationale": "Mapped 'yellow eyes' to 'icterus' and focused on biliary obstruction differentials."
-    }
+    }}
 
     
 
