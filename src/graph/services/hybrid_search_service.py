@@ -16,21 +16,17 @@ def hybrid_search_service(state: GraphState):
     logger.info("--- HYBRID SEARCH STARTING ---")
     
     embeddings = EmbeddingService()
-    query = state.get("query") # Query Optimizerda düzenlendi.
+    
+    # DÜZELTME: Sorguyu optimizer'ın ürettiği yerden alıyoruz
+    opt_queries = state.get("optimized_queries", {})
+    vector_query = opt_queries.get("vector_store_query", state.get("query"))
+    
     index_name = Config.PINECONE_INDEX_NAME
-    
-    vectorstore = PineconeVectorStore(
-        index_name=index_name, 
-        embedding=embeddings
-    )
+    vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings)
     
     
-    docs:List[Chunk] = vectorstore.get_final_context(query, k=5)
-    
-    
+    docs:List[Chunk] = vectorstore.get_final_context(vector_query, k=5)
     logger.info(f"Retrieved {len(docs)} documents from Pinecone.")
     
     
-    return {
-        "retrieved_docs": docs 
-    }
+    return {"retrieved_docs": docs}

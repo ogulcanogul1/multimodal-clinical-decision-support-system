@@ -19,7 +19,9 @@ async def web_research_service(state: GraphState):
     
     try:
         query = state.get("query") # Rerank için asıl soru lazım
-        web_queries = state.get("web_search_queries", [])
+        # DÜZELTME: Web sorgularını optimizer'dan al
+        opt_queries = state.get("optimized_queries", {})
+        web_queries = opt_queries.get("web_search_queries", [])
         
         if not web_queries:
             logger.warning("No web queries found in state!")
@@ -75,11 +77,7 @@ async def web_research_service(state: GraphState):
         logger.info(f"✅ Web research & Rerank complete. Selected top {len(final_web_chunks)} chunks.")
         
         # Sadece seçilen en iyi 3 dökümanı state'e gönderiyoruz
-        return {
-            "retrieved_docs": final_web_chunks,
-            "status": SystemStatus.PROCESSING.value
-        }
-
+        return {"retrieved_docs": final_web_chunks, "status": SystemStatus.PROCESSING.value}
     except Exception as e:
         logger.critical(f"🛑 Critical failure in integrated Web-Rerank node: {e}")
         return {"retrieved_docs": [], "status": SystemStatus.PROCESSING.value}

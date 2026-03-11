@@ -2,29 +2,30 @@ from typing import List, Optional, TypedDict, Dict, Any, Annotated
 import operator
 from src.schemas.document import Document
 from src.schemas.node_schemas.gate_keeper_schemas import LabReport
+from src.schemas.chunk import Chunk
 
 class GraphState(TypedDict):
     # --- HAM GİRİŞLER ---
     query: str
     image_path: Optional[str]
-    pdf_path: Optional[str]           # EKLENDİ (pdf_extract için)
-    raw_document_text: Optional[str]  # EKLENDİ (pdf_extract çıktısı)
+    pdf_path: Optional[str]          
+    raw_document_text: Optional[str] 
     lab_results: Optional[Dict[str, float]]
-    
     active_branches: List[str] 
     
     # --- CONTROL & VALIDATION ---
-    is_image_medical: bool      # Resim tıbbi bir görüntü mü?
-    is_lab_consistent: bool     # Lab değerleri biyolojik olarak anlamlı mı?
-    gatekeeper_notes: str       # Neden reddedildiğine dair kısa not
+    is_image_medical: bool      
+    is_lab_consistent: bool     
+    gatekeeper_notes: str       
     
     # --- RAG & RESEARCH INTELLIGENCE ---
-    optimized_queries: Dict[str, str] # Local ve Web için ayrı sorgular
-    retrieved_docs: Annotated[List[Document], operator.add]
+    optimized_queries: Dict[str, Any] # DÜZELTME: str yerine Any (Liste de alacak)
+    retrieved_docs: Annotated[List[Chunk], operator.add] # DÜZELTME: Document yerine Chunk
+    final_retrieved_docs: List[Chunk] # EKLENDİ: Temizlenmiş nihai belgeler
     web_results: List[Dict[str, Any]]
-    retrieval_retry_count: int # Döngü sayacı
+    retrieval_retry_count: int 
     is_search_reliable: bool 
-    rag_weight: float          # Fusion'da RAG'in etki katsayısı
+    rag_weight: float
     
     # --- MULTIMODAL ANALİZ & XAI (AÇIKLANABİLİRLİK) ---
     image_features: Optional[Any]     # CNN öznitelik vektörü

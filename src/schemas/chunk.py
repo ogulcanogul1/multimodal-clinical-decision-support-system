@@ -10,7 +10,7 @@ class ChunkMetadata:
     end_index: int
     total_doc_size: int
     page_number: Optional[int] = None
-    citation_id: Optional[str] = None  # <-- HATA BURADAYDI, "= None" EKLENDİ
+    citation_id: Optional[str] = None  
 
 @dataclass
 class Chunk:

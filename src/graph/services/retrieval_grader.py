@@ -59,17 +59,13 @@ async def retrieval_grader_service(state: GraphState):
 
     tasks = [grade_single_doc(doc) for doc in docs]
     results = await asyncio.gather(*tasks)
-
     relevant_docs = [doc for doc in results if doc is not None]
 
     if len(relevant_docs) > 0:
         logger.info(f"{len(relevant_docs)} documents passed the grade.")
-        return {
-            "retrieved_docs": relevant_docs
-        }
+        # DÜZELTME: operator.add tuzağına düşmemek için temizlenmiş listeyi YENİ bir değişkene yazıyoruz.
+        return {"final_retrieved_docs": relevant_docs}
     else:
-        logger.warning("No relevant documents found. Resetting retrieved_docs and Retrying.")
-        return {
-            "retrieved_docs": [], 
-            "status": SystemStatus.FAILED
-        }
+        logger.warning("No relevant documents found. Resetting and Retrying.")
+        # DÜZELTME: .value eklendi
+        return {"final_retrieved_docs": [], "status": SystemStatus.FAILED.value}

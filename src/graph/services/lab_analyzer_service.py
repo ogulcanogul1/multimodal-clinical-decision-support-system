@@ -43,7 +43,7 @@ def lab_analyzer_service(state: GraphState):
     """Feeds Pydantic data from Llama into 5 XGBoost models and generates diagnoses."""
     print("\n🔬 [LAB ANALYZER] Lab data is being sent to Expert Models...")
     
-    lab_report: LabReport = state.get("extracted_lab_data")
+    lab_report: LabReport = state.get("lab_data")
     
     if not lab_report or not lab_report.is_valid_report:
         return {"lab_analysis_results": {"Error": "Invalid or unreadable laboratory document."}}

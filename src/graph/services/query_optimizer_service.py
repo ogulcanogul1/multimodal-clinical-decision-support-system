@@ -79,6 +79,8 @@ def query_optimizer_service(state: GraphState):
     logger.info("✅ Optimization successful. Queries generated.")
 
     return {
-        "query": optimized_data.vector_store_query,
-        "web_search_queries": optimized_data.web_search_queries
+        "optimized_queries": {
+            "vector_store_query": optimized_data.vector_store_query,
+            "web_search_queries": optimized_data.web_search_queries
+        }
     }

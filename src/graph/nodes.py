@@ -42,22 +42,22 @@ def web_research_node(state: GraphState):
 def knowledge_synthesis_node(state: GraphState):
     """Arama sonuçlarını sentezler ve kaynakları etiketler."""
     logger.info("--- KNOWLEDGE SYNTHESIS: ASSIGNING CITATION IDS ---")
-    
     all_docs:List[Chunk] = state.get("retrieved_docs", [])
     
     if not all_docs:
-        return {"retrieved_docs": []}
+        return {} # DÜZELTME: Boş dön
 
     for i, doc in enumerate(all_docs):
         doc.metadata.citation_id = f"Ref-{i+1}"
-        
         prefix = f"[[SOURCE ID: {doc.metadata.citation_id}]] | SOURCE: {doc.metadata.source}\n"
         if not doc.content.startswith("[[SOURCE ID:"):
             doc.content = prefix + doc.content
 
     logger.info(f"Assigned Citation IDs to {len(all_docs)} documents.")
 
-    return {"retrieved_docs": all_docs}
+    # DÜZELTME: Döngü zaten nesneleri güncelledi. 
+    # Tekrar 'retrieved_docs' dönersek operator.add listeyi ikiye katlar! Boş dönüyoruz.
+    return {}
 
 def retrieval_grader_node(state: GraphState):
     """Arama kalitesini puanlar (Retry mi yoksa Fusion mı?)."""
