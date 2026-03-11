@@ -3,7 +3,7 @@ from typing import List
 from langchain_community.tools.tavily_search import TavilySearchResults
 from src.graph.state import GraphState
 from src.graph.enum.system_status import SystemStatus
-from src.schemas.node_schemas.rag_schemas import Chunk, ChunkMetadata
+from src.schemas.chunk import Chunk , ChunkMetadata
 from src.vectorstores.reranker import RerankerService # Senin servisin
 from src import logger
 

@@ -10,6 +10,7 @@ class NodeNames(str, Enum):
     CNN_CONTROL = "cnn_control"  
     IMAGE_ANALYZER = "image_analyzer"
     IMAGE_SKIP = "image_skip"
+    PDF_EXTRACT = "pdf_extract"
     MLP_CONTROL = "mlp_control"  
     LAB_ANALYZER = "lab_analyzer"
     LAB_SKIP = "lab_skip"

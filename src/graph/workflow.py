@@ -65,6 +65,8 @@ workflow.add_node(NodeNames.RETRIEVAL_GRADER.value, retrieval_grader_node)
 workflow.add_node(NodeNames.CNN_CONTROL.value, image_gatekeeper_node)
 workflow.add_node(NodeNames.IMAGE_ANALYZER.value, image_analyzer_node)
 workflow.add_node(NodeNames.IMAGE_SKIP.value, image_skip_node)
+
+workflow.add_node(NodeNames.PDF_EXTRACT.value, document_loader_node)
 workflow.add_node(NodeNames.MLP_CONTROL.value, lab_gatekeeper_node)
 workflow.add_node(NodeNames.LAB_ANALYZER.value, lab_analyzer_node)
 workflow.add_node(NodeNames.LAB_SKIP.value, lab_skip_node)

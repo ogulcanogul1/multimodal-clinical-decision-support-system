@@ -11,6 +11,8 @@ from src.graph.services.image_analyzer_service import image_analyzer_service
 from src.graph.services.adaptive_fusion_service import adaptive_fusion_service
 from src.graph.services.diagnostic_agent_service import diagnostic_agent_service
 from src.graph.services.self_critique_service import self_critique_service
+from src.graph.services.extract_pdf_service import extract_text_with_pymupdf
+import os
 
 
 from src import logger
@@ -81,6 +83,33 @@ def image_skip_node(state: GraphState):
 }
     
     return {"image_analysis_results": skip_message}
+
+def document_loader_node(state: GraphState):
+    """
+    LangGraph akışının en başında çalışır. 
+    State'te bir PDF yolu varsa onu okur ve metni State'e yazar.
+    Böylece MLP Control Service doğrudan bu temiz metni kullanabilir.
+    """
+    print("\n📄 [DOCUMENT LOADER] Tahlil PDF'i sisteme yükleniyor ve metne çevriliyor...")
+    
+    # State'ten dosya yolunu al (Örn: "data/uploads/hasta_tahlil.pdf")
+    # Bunu GraphState sınıfına 'pdf_path' olarak eklemelisin.
+    pdf_path = state.get("pdf_path")
+    
+    if not pdf_path or not os.path.exists(pdf_path):
+        print("   ⚠️ Geçerli bir PDF yolu bulunamadı.")
+        return {"raw_document_text": ""}
+
+    # PyMuPDF ile metni çıkar
+    extracted_text = extract_text_with_pymupdf(pdf_path)
+    
+    if extracted_text:
+        print("   ✅ PDF başarıyla okundu ve metin çıkarıldı.")
+    else:
+        print("   ⚠️ PDF okundu ancak içinden metin çıkarılamadı (Taranmış/Görsel formatta olabilir).")
+
+    # Çıkarılan metni bir sonraki düğüm (mlp_control_service) için State'e yaz
+    return {"raw_document_text": extracted_text}
 
 def lab_gatekeeper_node(state: GraphState):
     """Lab verisi tutarlılığını kontrol eder."""
