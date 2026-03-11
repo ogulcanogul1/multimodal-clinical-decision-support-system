@@ -4,35 +4,29 @@ from src.graph.enum.system_status import SystemStatus
 from src import logger 
 
 def parser_service(state:GraphState):
-    """
-    Sisteme giren ham veriyi analiz eder ve aktif kolları belirler.
-    """
     print("--- INPUT PARSER STARTING ---")
     logger.info("--- INPUT PARSER STARTING ---")
-    
-    # RAG (Query Optimizer) her zaman aktiftir.
     active_branches = [NodeNames.QUERY_OPTIMIZER.value]
     
     image_path = state.get("image_path")
     if image_path:
-        print(f"📍 Image detected: {image_path}. Activating CNN branch.")
-        logger.info(f"📍 Image detected: {image_path}. Activating CNN branch.")
+        print("Image Bulundu")
+        logger.info("Image Bulundu")
         active_branches.append(NodeNames.CNN_CONTROL.value)
     
-    lab_results = state.get("lab_results")
-    if lab_results:
-        print(f"📍 Lab results detected. Activating MLP branch.")
-        logger.info(f"📍 Lab results detected. Activating MLP branch.")
-        active_branches.append(NodeNames.MLP_CONTROL.value)
+    # DÜZELTME: Artık lab_results değil, pdf_path veya raw text arıyoruz
+    pdf_path = state.get("pdf_path")
+    raw_text = state.get("raw_document_text")
     
-   
-    #'active_branches' Annotated[List, operator.add] olduğu için 
-    # doğrudan listeyi döndürmek üzerine ekleme yapacaktır.
-
-    print(f"active branches: {active_branches}")
-    logger.info(f"active branches: {active_branches}")
+    if pdf_path or raw_text:
+        print(f"📍 Lab document detected. Activating PDF Extract / MLP branch.")
+        logger.info("📍 Lab document detected. Activating PDF Extract / MLP branch.")
+        # Şemana göre pdf_extract'i tetiklemen gerekiyorsa buraya onun adını yazmalısın.
+        # Eğer Edge'lerini direkt mlp_control'e bağladıysan böyle kalabilir.
+        active_branches.append(NodeNames.PDF_EXTRACT.value) # veya MLP_CONTROL.value
+        
     return {
         "active_branches": active_branches,
-        "rag_retry_count": 0, # Sayaçları sıfırla
+        "rag_retry_count": 0,
         "status": SystemStatus.STARTED.value
     }
