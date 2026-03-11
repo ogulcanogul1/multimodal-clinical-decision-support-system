@@ -11,13 +11,17 @@ def diagnostic_agent_service(state: GraphState):
     """
     print("\n👨‍⚕️ [DIAGNOSTIC AGENT] The Chief Medical Officer (LLM) is writing the final report...")
 
-    if state["conflict_retry_count"] >= 3:
-        return {"final_report": final_report}
+    retry_count = state.get("conflict_retry_count", 0)
+
+    if retry_count >= 3:
+        return {}
     
     # 1. Extract Synthesized Data and User Query from State
     context = state.get("fused_clinical_context", {})
     query = state.get("query", "Please analyze my overall health status based on the provided documents.")
     
+    guidance = state.get("resolution_guidance", "")
+
     lab_anomalies = context.get("Lab_Anomalies", [])
     image_anomalies = context.get("Image_Anomalies", [])
     literature = context.get("Literature_Support", "")
@@ -49,6 +53,7 @@ CLINICAL PICTURE:
 MEDICAL LITERATURE (RAG):
 {literature}
 
+{guidance}
 Please format your final report strictly using the following structure:
 - 📌 Clinical Status Summary
 - 🔗 Cross-Modality Findings & Diagnostic Limitations (Highlight what is correlated, or what is missing to make a full diagnosis)
@@ -61,27 +66,19 @@ Please format your final report strictly using the following structure:
         ("human", "Patient's Query/Complaint: {query}\n\nPlease generate your detailed and professional medical report.")
     ])
     
-    # ==========================================
-    # 4. LLM CALL (INFERENCE)
-    # ==========================================
     try:
-        # Kendi yapına göre LLM'i çağır
-        llm = OllamaLLMFactory.diagnostic_llm() 
+        llm = OllamaLLMFactory.diagnostic_llm()
         chain = prompt | llm
         
         response = chain.invoke({
-            "clinical_summary": clinical_summary,
-            "literature": literature,
             "query": query
         })
         
-        # LangChain objesinden metni çıkar
         final_report = response.content if hasattr(response, 'content') else str(response)
         
     except Exception as e:
         print(f"❌ [DIAGNOSTIC AGENT] LLM Error: {str(e)}")
-        final_report = "Due to system overload, the medical report could not be generated. Please consult a healthcare facility directly with your findings."
+        final_report = "Due to system overload, the medical report could not be generated."
 
     print("✅ [DIAGNOSTIC AGENT] Final medical report successfully generated!")
-    
     return {"final_report": final_report}

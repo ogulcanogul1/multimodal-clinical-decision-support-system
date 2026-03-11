@@ -9,7 +9,8 @@ def adaptive_fusion_service(state: GraphState):
 
     lab_results = state.get("lab_analysis_results", {})
     image_results = state.get("image_analysis_results", {})
-    retrieved_docs = state.get("retrieved_docs", []) 
+    # DÜZELTME: RAG'den gelen TEMİZLENMİŞ dokümanları alıyoruz!
+    retrieved_docs = state.get("final_retrieved_docs", [])
 
     fusion_report = {
         "Lab_Anomalies": [],
@@ -43,5 +44,4 @@ def adaptive_fusion_service(state: GraphState):
         fusion_report["Literature_Support"] = "No specific medical literature found for this case."
 
     print(f"✅ Veri Sentezi Tamam! Toplam Anormallik: {fusion_report['Total_Anomaly_Count']}")
-    
     return {"fused_clinical_context": fusion_report}
