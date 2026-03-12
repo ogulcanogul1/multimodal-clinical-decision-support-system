@@ -4,8 +4,10 @@ from sentence_transformers import SentenceTransformer
 from src.schemas.chunk import Chunk
 from src import logger
 
+# sentence-transformers/all-MiniLM-L6-v2
+# Alibaba-NLP/gte-Qwen2-1.5B-instruct
 class EmbeddingService:
-    def __init__(self, model_name: str = "Alibaba-NLP/gte-Qwen2-1.5B-instruct"):
+    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
         
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
