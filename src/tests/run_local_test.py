@@ -1,6 +1,5 @@
 from src.graph.workflow import app
 from src.graph.enum.system_status import SystemStatus
-
 def run_local_test():
     print("🚀 CDSS LangGraph Motoru Test İçin Ateşleniyor...\n")
     

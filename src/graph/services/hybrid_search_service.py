@@ -22,10 +22,10 @@ def hybrid_search_service(state: GraphState):
     vector_query = opt_queries.get("vector_store_query", state.get("query"))
     
     index_name = Config.PINECONE_INDEX_NAME
-    vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings)
+    vectorstore = PineconeVectorStore()
     
     
-    docs:List[Chunk] = vectorstore.get_final_context(vector_query, k=5)
+    docs:List[Chunk] = vectorstore.get_final_context(vector_query, top_k=5)
     logger.info(f"Retrieved {len(docs)} documents from Pinecone.")
     
     

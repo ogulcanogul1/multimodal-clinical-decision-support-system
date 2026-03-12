@@ -1,25 +1,22 @@
-import asyncio
 from typing import List
 from langchain_community.tools.tavily_search import TavilySearchResults
 from src.graph.state import GraphState
 from src.graph.enum.system_status import SystemStatus
-from src.schemas.chunk import Chunk , ChunkMetadata
-from src.vectorstores.reranker import RerankerService # Senin servisin
+from src.schemas.chunk import Chunk, ChunkMetadata
+from src.vectorstores.reranker import RerankerService
 from src import logger
 
-# Servisi fonksiyon dışında bir kez ilklendirebilirsin (Singleton mantığı)
 reranker_service = RerankerService(model_name="BAAI/bge-reranker-v2-m3")
 
-async def web_research_service(state: GraphState):
+def web_research_service(state: GraphState):
     """
-    Optimizer sorgularını paralel aratır, sonuçları anında Reranker ile 
+    Optimizer sorgularını sırayla aratır, sonuçları anında Reranker ile 
     puanlar ve sadece en iyi 3 chunk'ı döner.
     """
-    logger.info("--- 🌐 WEB RESEARCH & RERANK STARTING (ASYNC) ---")
+    logger.info("--- 🌐 WEB RESEARCH & RERANK STARTING ---")
     
     try:
-        query = state.get("query") # Rerank için asıl soru lazım
-        # DÜZELTME: Web sorgularını optimizer'dan al
+        query = state.get("query") 
         opt_queries = state.get("optimized_queries", {})
         web_queries = opt_queries.get("web_search_queries", [])
         
@@ -29,11 +26,12 @@ async def web_research_service(state: GraphState):
 
         search_tool = TavilySearchResults(k=2)
         MAX_CHAR_LIMIT = 5000 
+        all_web_chunks = []
 
-        async def perform_search(q: str) -> List[Chunk]:
+        # 1. Normal for döngüsü ile tüm web verilerini topla
+        for q in web_queries:
             try:
-                search_results = await asyncio.to_thread(search_tool.invoke, {"query": q})
-                chunks = []
+                search_results = search_tool.invoke({"query": q})
                 for res in search_results:
                     raw_content = res.get("content", "")
                     
@@ -48,26 +46,17 @@ async def web_research_service(state: GraphState):
                         end_index=len(raw_content),
                         page_number=None 
                     )
-                    chunks.append(Chunk(content=raw_content, metadata=meta))
-                return chunks
+                    all_web_chunks.append(Chunk(content=raw_content, metadata=meta))
             except Exception as e:
                 logger.error(f"❌ Sub-search error for '{q}': {e}")
-                return []
-
-        # 1. Paralel olarak tüm web verilerini topla
-        tasks = [perform_search(q) for q in web_queries]
-        results = await asyncio.gather(*tasks)
-        all_web_chunks = [chunk for sublist in results for chunk in sublist]
 
         if not all_web_chunks:
             logger.warning("No web chunks retrieved.")
             return {"retrieved_docs": []}
 
         # 2. ENTEGRE RERANKER KATMANI
-        # State'e yazmadan önce senin RerankerService'i burada çalıştırıyoruz
         logger.info(f"🎯 Reranking {len(all_web_chunks)} web chunks with BGE...")
         
-        # Senin rerank metodun top_k=3 döküman dönecek şekilde kurgulanmış
         final_web_chunks = reranker_service.rerank(
             query=query, 
             documents=all_web_chunks, 
@@ -76,8 +65,8 @@ async def web_research_service(state: GraphState):
 
         logger.info(f"✅ Web research & Rerank complete. Selected top {len(final_web_chunks)} chunks.")
         
-        # Sadece seçilen en iyi 3 dökümanı state'e gönderiyoruz
         return {"retrieved_docs": final_web_chunks, "status": SystemStatus.PROCESSING.value}
+        
     except Exception as e:
         logger.critical(f"🛑 Critical failure in integrated Web-Rerank node: {e}")
         return {"retrieved_docs": [], "status": SystemStatus.PROCESSING.value}
