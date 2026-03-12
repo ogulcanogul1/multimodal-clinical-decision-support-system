@@ -12,6 +12,7 @@ note.txt
 structure.ipynb
 
 data/
+data/keyword_search/
 
 # Distribution / packaging
 .Python

@@ -79,35 +79,44 @@ class MedicalPDFLoader:
         return documents
     
 pdf_library = [
-        {
-            "file": "standards-of-care-2026.pdf", 
-            "start": 11, "end": 300, "label": "ADA (Diyabet)"
-        },
-        {
-            "file": "KDIGO-2024-CKD-Guideline.pdf", 
-            "start": 20, "end": 180, "label": "KDIGO (Böbrek)"
-        },
-        {
-            "file": "Guia-ESC-2024_.pdf", 
-            "start": 15, "end": 250, "label": "ESC (Kalp/Tansiyon)"
-        },
-        {
-            "file": "GINA-Summary-Guide-2024-WEB-WMS.pdf", 
-            "start": 1, "end": 55, "label": "GINA (Astım)"
-        },
-        {
-            "file": "amckd_nice_guideline_v8.1.pdf", 
-            "start": 5, "end": 100, "label": "NICE (Anemi)"
-        },
-        {
-            "file": "8205Oxford Handbook of Clinical Medicine 10th 2017 Edition_SamanSarKo - Copy.pdf", 
-            "start": 30, "end": 850, "label": "Oxford (Genel Klinik)"
-        },
-        {
-            "file": "harrisons-manual-of-medicine-16th-edition.pdf", 
-            "start": 15, "end": 900, "label": "Harrison (Dahiliye)"
-        }
-    ]
+    {
+        "file": "standards-of-care-2026.pdf", 
+        "start": 11, "end": 300, "label": "ADA (Diyabet)"
+        # Orijinalini koruduk, makul görünüyor
+    },
+    {
+        "file": "KDIGO-2024-CKD-Guideline.pdf", 
+        "start": 20, "end": 180, "label": "KDIGO (Böbrek)"
+        # Orijinalini koruduk
+    },
+    {
+        "file": "Guia-ESC-2024_.pdf", 
+        "start": 15, "end": 250, "label": "ESC (Kalp/Tansiyon)"
+        # Orijinalini koruduk
+    },
+    {
+        "file": "GINA-Summary-Guide-2024-WEB-WMS.pdf", 
+        "start": 3,   # Sayfa 1-2: kapak + telif, içerik sayfa 3'te başlıyor (TOC)
+        "end": 49,    # Toplam 49 sayfa, tamamı klinik içerik
+        "label": "GINA (Astım)"
+    },
+    {
+        "file": "amckd_nice_guideline_v8.1.pdf", 
+        "start": 4,   # Sayfa 1-3: kapak + telif + içindekiler
+        "end": 36,    # Toplam 36 sayfa, appendix dahil kalsın
+        "label": "NICE (Anemi)"
+    },
+    {
+        "file": "8205Oxford Handbook of Clinical Medicine 10th 2017 Edition_SamanSarKo - Copy.pdf", 
+        "start": 30, "end": 850, "label": "Oxford (Genel Klinik)"
+        # Orijinalini koruduk
+    },
+    {
+        "file": "harrisons-manual-of-medicine-16th-edition.pdf", 
+        "start": 15, "end": 900, "label": "Harrison (Dahiliye)"
+        # Orijinalini koruduk
+    }
+]
 
 if __name__ == "__main__":
     
