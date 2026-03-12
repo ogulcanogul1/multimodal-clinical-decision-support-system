@@ -5,13 +5,13 @@ from src.graph.state import GraphState
 from src.graph.enum.system_status import SystemStatus
 from src.schemas.node_schemas.rag_schemas import OptimizedQueries
 from src import logger
+import json
 
 def query_optimizer_service(state: GraphState):
     logger.info("--- 🔍 QUERY OPTIMIZER STARTING ---")
     
     user_query = state.get("query")
     llm = ActiveLLMFactory.query_optimizer_llm()
-    output_parser = PydanticOutputParser(pydantic_object=OptimizedQueries)
     
     system_prompt_content = """You are a Medical Query Transformer. Your ONLY mission is to convert the User Input into a dual-search strategy. You do not answer questions; you only generate search keys.
 
@@ -68,12 +68,14 @@ def query_optimizer_service(state: GraphState):
     """
 
     prompt = ChatPromptTemplate.from_template(system_prompt_content)
-    chain = prompt | llm | output_parser
+    chain = prompt | llm 
 
+    schema_dict = OptimizedQueries.model_json_schema()
+    format_instructions = json.dumps(schema_dict, indent=2)
     # Zinciri çalıştır
     optimized_data:OptimizedQueries = chain.invoke({
         "query": user_query,
-        "format_instructions": output_parser.get_format_instructions()
+        "format_instructions": format_instructions
     })
 
     logger.info("✅ Optimization successful. Queries generated.")

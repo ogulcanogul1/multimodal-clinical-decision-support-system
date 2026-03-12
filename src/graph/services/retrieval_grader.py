@@ -33,7 +33,6 @@ async def retrieval_grader_service(state: GraphState):
         return {"retrieval_retry_count": retry_count + 1}
 
     llm = ActiveLLMFactory.retrieval_grader_llm() 
-    parser = JsonOutputParser(pydantic_object=Grade)
     
     system_prompt = """You are a highly strict medical quality grader. 
     Assess whether the following retrieved document is clinically relevant to the user query.
@@ -49,7 +48,7 @@ async def retrieval_grader_service(state: GraphState):
 
     async def grade_single_doc(doc: Chunk) -> Chunk:
         try:
-            chain = prompt | llm | parser
+            chain = prompt | llm 
             res: Grade = await chain.ainvoke({"query": query, "context": doc.content})
             
             if res.binary_score.lower() == "yes":
