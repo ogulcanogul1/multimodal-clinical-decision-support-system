@@ -13,6 +13,7 @@ structure.ipynb
 
 data/
 data/keyword_search/
+logs/
 
 # Distribution / packaging
 .Python
