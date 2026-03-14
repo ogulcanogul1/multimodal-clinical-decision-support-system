@@ -94,4 +94,21 @@ public class ConsultationService {
                 c.getCreatedAt()
         );
     }
+
+    @Transactional
+    public ConsultationResponse closeConsultation(String id) {
+        Consultation consultation = consultationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Kapatılacak muayene bulunamadı: " + id));
+
+        if (consultation.getStatus() == ConsultationStatus.CLOSED) {
+            throw new RuntimeException("Bu muayene zaten daha önce kapatılmış.");
+        }
+
+        // Statüyü güncelle
+        consultation.setStatus(ConsultationStatus.CLOSED);
+
+        Consultation updated = consultationRepository.save(consultation);
+
+        return mapToResponse(updated);
+    }
 }
