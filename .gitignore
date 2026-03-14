@@ -14,7 +14,7 @@ structure.ipynb
 data/
 data/keyword_search/
 logs/
-core-backend/docker-compose.yml
+core_backend_default_gitignore
 
 # Distribution / packaging
 .Python
@@ -40,6 +40,7 @@ MANIFEST
 # ==========================================
 # JAVA / SPRING BOOT (core-backend) AYARLARI
 # ==========================================
+core-backend/docker-compose.yml
 core-backend/HELP.md
 core-backend/target/
 core-backend/.mvn/wrapper/maven-wrapper.jar
