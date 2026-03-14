@@ -14,6 +14,7 @@ structure.ipynb
 data/
 data/keyword_search/
 logs/
+core-backend/docker-compose.yml
 
 # Distribution / packaging
 .Python
@@ -34,6 +35,45 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+
+# ==========================================
+# JAVA / SPRING BOOT (core-backend) AYARLARI
+# ==========================================
+core-backend/HELP.md
+core-backend/target/
+core-backend/.mvn/wrapper/maven-wrapper.jar
+!core-backend/**/src/main/**/target/
+!core-backend/**/src/test/**/target/
+
+### STS ###
+core-backend/.apt_generated
+core-backend/.classpath
+core-backend/.factorypath
+core-backend/.project
+core-backend/.settings
+core-backend/.springBeans
+core-backend/.sts4-cache
+
+### IntelliJ IDEA ###
+core-backend/.idea/
+core-backend/*.iws
+core-backend/*.iml
+core-backend/*.ipr
+
+### NetBeans ###
+core-backend/nbproject/private/
+core-backend/nbbuild/
+core-backend/dist/
+core-backend/nbdist/
+core-backend/.nb-gradle/
+core-backend/build/
+!core-backend/**/src/main/**/build/
+!core-backend/**/src/test/**/build/
+
+### VS Code ###
+core-backend/.vscode/
+
 
 # PyInstaller
 #   Usually these files are written by a python script from a template
