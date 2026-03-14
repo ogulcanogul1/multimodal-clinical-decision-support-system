@@ -57,4 +57,8 @@ public class Patient {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public String getFullName() {
+        return firstName + " " + lastName;
+    }
 }

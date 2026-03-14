@@ -45,4 +45,8 @@ public class Doctor {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
+
+    public String getFullName() {
+        return firstName + " " + lastName;
+    }
 }
