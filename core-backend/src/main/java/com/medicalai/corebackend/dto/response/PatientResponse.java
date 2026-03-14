@@ -1,4 +1,4 @@
-package com.medicalai.corebackend.dto.request;
+package com.medicalai.corebackend.dto.response;
 
 import com.medicalai.corebackend.entity.enums.BloodType;
 import com.medicalai.corebackend.entity.enums.Gender;
