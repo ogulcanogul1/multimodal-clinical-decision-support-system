@@ -1,6 +1,5 @@
 package com.medicalai.corebackend.entity;
 
-import com.medicalai.corebackend.entity.enums.Role;
 import com.medicalai.corebackend.entity.enums.Specialty;
 import jakarta.persistence.*;
 import lombok.*;
@@ -38,10 +37,6 @@ public class Doctor {
 
     @Column(nullable = false, unique = true, length = 50)
     private String licenseNumber; // Diploma/Tescil No
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private Role role;
 
     @Column(updatable = false)
     private LocalDateTime createdAt;

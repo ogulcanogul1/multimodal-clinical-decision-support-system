@@ -109,4 +109,37 @@ public class DoctorService {
                 doctor.getCreatedAt()
         );
     }
+
+    @Transactional
+    public DoctorResponse updateDoctor(String id, DoctorRequest request) {
+        Doctor existingDoctor = doctorRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Güncellenecek doktor bulunamadı. ID: " + id));
+
+        // Email değişiyorsa, yeni emailin başkasında olup olmadığını kontrol et
+        if (!existingDoctor.getEmail().equals(request.email()) &&
+                doctorRepository.existsByEmail(request.email())) {
+            throw new RuntimeException("Bu email adresi zaten başka bir doktor tarafından kullanılıyor!");
+        }
+
+        // Lisans numarası değişiyorsa kontrol et
+        if (!existingDoctor.getLicenseNumber().equals(request.licenseNumber()) &&
+                doctorRepository.existsByLicenseNumber(request.licenseNumber())) {
+            throw new RuntimeException("Bu lisans numarası zaten başka bir doktora kayıtlı!");
+        }
+
+        // Alanları güncelle
+        existingDoctor.setFirstName(request.firstName());
+        existingDoctor.setLastName(request.lastName());
+        existingDoctor.setEmail(request.email());
+        existingDoctor.setLicenseNumber(request.licenseNumber());
+        existingDoctor.setSpecialty(request.specialty());
+
+        // Şifre boş değilse güncelle (Opsiyonel: Boş gelirse eski şifre kalsın denebilir)
+        if (request.password() != null && !request.password().isBlank()) {
+            existingDoctor.setPasswordHash(request.password());
+        }
+
+        Doctor updated = doctorRepository.save(existingDoctor);
+        return mapToResponse(updated);
+    }
 }

@@ -71,4 +71,11 @@ public class DoctorController {
     public ResponseEntity<DoctorResponse> getDoctorByLicense(@RequestParam String licenseNumber) {
         return ResponseEntity.ok(doctorService.getDoctorByLicense(licenseNumber));
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<DoctorResponse> updateDoctor(
+            @PathVariable String id,
+            @Valid @RequestBody DoctorRequest request) {
+        return ResponseEntity.ok(doctorService.updateDoctor(id, request));
+    }
 }
