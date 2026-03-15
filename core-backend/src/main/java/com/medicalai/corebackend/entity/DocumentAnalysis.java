@@ -5,7 +5,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
 @Table(name = "document_analyses")
@@ -39,7 +41,7 @@ public class DocumentAnalysis {
     // Örn: {"glucose": "high_impact", "age": "medium_impact"}
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String featureImportance;
+    private Map<String, Object> featureImportance;
 
     private Boolean doctorFeedback; // Doktor onayladı mı?
 
