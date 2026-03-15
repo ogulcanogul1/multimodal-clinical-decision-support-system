@@ -1,19 +1,24 @@
 package com.medicalai.corebackend.service;
 
+import com.medicalai.corebackend.dto.request.AiAgentRequest;
 import com.medicalai.corebackend.dto.request.ChatMessageRequest;
+import com.medicalai.corebackend.dto.response.AiAgentResponse;
 import com.medicalai.corebackend.dto.response.ChatMessageResponse;
 import com.medicalai.corebackend.entity.ChatMessage;
 import com.medicalai.corebackend.entity.Consultation;
+import com.medicalai.corebackend.entity.DocumentAnalysis;
+import com.medicalai.corebackend.entity.ImageAnalysis;
 import com.medicalai.corebackend.entity.enums.ConsultationStatus;
 import com.medicalai.corebackend.entity.enums.MessageSender;
 import com.medicalai.corebackend.repository.ChatMessageRepository;
 import com.medicalai.corebackend.repository.ConsultationRepository;
+import com.medicalai.corebackend.repository.ImageAnalysisRepository;
+import com.medicalai.corebackend.repository.DocumentAnalysisRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,6 +27,11 @@ public class ChatMessageService {
 
     private final ChatMessageRepository chatMessageRepository;
     private final ConsultationRepository consultationRepository;
+    private final AiIntegrationService aiIntegrationService;
+
+    // URL'leri bulmak için Repoları ekledik
+    private final ImageAnalysisRepository imageAnalysisRepository;
+    private final DocumentAnalysisRepository documentAnalysisRepository;
 
     @Transactional
     public ChatMessageResponse sendMessage(String consultationId, ChatMessageRequest request) {
@@ -32,7 +42,7 @@ public class ChatMessageService {
             throw new RuntimeException("Bu muayene kapatılmış! Yeni mesaj gönderilemez.");
         }
 
-        // 1. DOKTORUN MESAJINI KAYDET
+        // 1. DOKTORUN MESAJINI KAYDET (Veritabanında ID tutmak mantıklı, ilişkisel veri için)
         ChatMessage doctorMessage = ChatMessage.builder()
                 .consultation(consultation)
                 .senderRole(MessageSender.DOCTOR)
@@ -40,30 +50,41 @@ public class ChatMessageService {
                 .imageAnalysisId(request.imageAnalysisId())
                 .documentAnalysisId(request.documentAnalysisId())
                 .build();
-
         chatMessageRepository.save(doctorMessage);
 
-        // 2. YAPAY ZEKAYA (PYTHON) SOR VE CEVABI KAYDET
-        return askAiAgent(consultation, request);
-    }
+        // --- ID'LERİ URL'YE ÇEVİRME İŞLEMİ (SENİN HARİKA UYARIN) ---
+        String imageUrl = null;
+        if (request.imageAnalysisId() != null) {
+            imageUrl = imageAnalysisRepository.findById(request.imageAnalysisId())
+                    .map(ImageAnalysis::getOriginalImageUrl)
+                    .orElse(null);
+        }
 
-    // Şimdilik Simülasyon: İleride buraya RestTemplate/WebClient ile Python'a giden kod gelecek
-    private ChatMessageResponse askAiAgent(Consultation consultation, ChatMessageRequest userRequest) {
+        String documentUrl = null;
+        if (request.documentAnalysisId() != null) {
+            documentUrl = documentAnalysisRepository.findById(request.documentAnalysisId())
+                    .map(DocumentAnalysis::getDocumentUrl)
+                    .orElse(null);
+        }
 
-        // TODO: FastAPI'ye userRequest.messageContent() gönderilecek, cevap beklenecek.
-
-        // Python'dan geldiğini varsaydığımız örnek bir JSONB kaynakça listesi:
-        List<Map<String, Object>> mockSources = List.of(
-                Map.of("source", "ESC Guidelines 2023", "page", 42, "relevance", 0.95)
+        // 2. PYTHON FASTAPI'YE GERÇEK HTTP İSTEĞİ AT (Artık URL'ler gidiyor)
+        AiAgentRequest aiRequest = new AiAgentRequest(
+                consultationId,
+                request.messageContent(),
+                imageUrl,      // Python direkt resmi okuyacak
+                documentUrl    // Python direkt PDF'i okuyacak
         );
 
+        AiAgentResponse aiResponse = aiIntegrationService.askFastApi(aiRequest);
+
+        // 3. PYTHON'DAN GELEN CEVABI AI OLARAK KAYDET
         ChatMessage aiMessage = ChatMessage.builder()
                 .consultation(consultation)
                 .senderRole(MessageSender.AI)
-                .messageContent("Python Agent: Yüklediğiniz verilere ve RAG taramasına göre hastada pnömoni riski gözlemlenmiştir.")
-                .citedSources(mockSources) // RAG Kaynakçaları
-                .imageAnalysisId(userRequest.imageAnalysisId()) // Hangi analize baktığını hatırlatmak için
-                .documentAnalysisId(userRequest.documentAnalysisId())
+                .messageContent(aiResponse.aiMessage())
+                .citedSources(aiResponse.sources())
+                .imageAnalysisId(request.imageAnalysisId())
+                .documentAnalysisId(request.documentAnalysisId())
                 .build();
 
         ChatMessage savedAiMessage = chatMessageRepository.save(aiMessage);

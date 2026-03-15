@@ -4,8 +4,10 @@ import com.medicalai.corebackend.entity.enums.BloodType;
 import com.medicalai.corebackend.entity.enums.Gender;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "patients")
@@ -40,8 +42,22 @@ public class Patient {
     @Column(nullable = false,length = 20)
     private BloodType bloodType;
 
-    @Column(columnDefinition = "TEXT")
-    private String chronicDiseases; // RAG için hayati önem taşıyan geçmiş hastalıklar
+    @ElementCollection(fetch = FetchType.EAGER) // RAG yaparken hemen gelsin diye EAGER yapabilirsin
+    @CollectionTable(name = "patient_chronic_diseases", joinColumns = @JoinColumn(name = "patient_id"))
+    @Column(name = "disease_name")
+    private List<String> chronicDiseases;
+
+    // 2. Alerjiler Tablosu
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "patient_allergies", joinColumns = @JoinColumn(name = "patient_id"))
+    @Column(name = "allergy_name")
+    private List<String> allergies;
+
+    // 3. Kullanılan İlaçlar Tablosu
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "patient_medications", joinColumns = @JoinColumn(name = "patient_id"))
+    @Column(name = "medication_name")
+    private List<String> currentMedications;
 
     @Column(updatable = false)
     private LocalDateTime createdAt;
