@@ -5,12 +5,11 @@ import numpy as np
 from src.graph.state import GraphState
 from src.schemas.node_schemas.gate_keeper_schemas import LabReport
 
-# 1. MEDICAL TRANSLATION DICTIONARY (Handles reverse logic and multi-class mapping)
 DIAGNOSIS_MAPPING = {
     "Diabetes": {0: "✅ Healthy", 1: "⚠️ Diabetes Patient"},
     "Cardiovascular": {0: "✅ Healthy", 1: "⚠️ Cardiovascular Disease Risk"},
-    "Kidney_CKD": {0: "⚠️ Chronic Kidney Disease (CKD)", 1: "✅ Healthy"}, # Reverse Logic (0: Patient)
-    "Liver": {0: "⚠️ Liver Disease Symptom", 1: "✅ Healthy"}, # Reverse Logic (0: Patient)
+    "Kidney_CKD": {0: "⚠️ Chronic Kidney Disease (CKD)", 1: "✅ Healthy"}, # Reverse Logic
+    "Liver": {0: "⚠️ Liver Disease Symptom", 1: "✅ Healthy"}, # Reverse Logic
     "Anemia": {
         0: "✅ Healthy", 1: "⚠️ Iron Deficiency Anemia", 2: "⚠️ Leukemia Suspicion",
         3: "⚠️ Leukemia with Thrombocytopenia", 4: "⚠️ Macrocytic Anemia", 
@@ -20,38 +19,39 @@ DIAGNOSIS_MAPPING = {
 }
 
 def predict_safely(model, raw_df):
-    """
-    Critical Shield Function: Dynamically creates all columns expected by the model (including dummy cols).
-    Leaves missing values in the patient's test as NaN to prevent XGBoost from crashing.
-    """
     expected_features = model.feature_names_in_
     safe_df = pd.DataFrame(columns=expected_features)
-    safe_df.loc[0] = np.nan # Fill everywhere with NaN
+    safe_df.loc[0] = np.nan 
     
-    # Transfer the available blood values to the expected columns
     for col in raw_df.columns:
         if col in expected_features:
             safe_df.at[0, col] = raw_df.at[0, col]
             
-    safe_df = safe_df.astype(float) # Prevent type mismatch
+    safe_df = safe_df.astype(float) 
     prob = model.predict_proba(safe_df)[0]
     pred = model.predict(safe_df)[0]
     return prob, pred
 
 
 def lab_analyzer_service(state: GraphState):
-    """Feeds Pydantic data from Llama into 5 XGBoost models and generates diagnoses."""
     print("\n🔬 [LAB ANALYZER] Lab data is being sent to Expert Models...")
     
     lab_report: LabReport = state.get("lab_data")
     
-    if not lab_report or not lab_report.is_valid_report:
+    if not lab_report or not getattr(lab_report, 'is_valid_report', False):
         return {"lab_analysis_results": {"Error": "Invalid or unreadable laboratory document."}}
 
-    # 2. ALIAS SEARCH ENGINE
     extracted_dict = {param.name.lower().strip(): param.value for param in lab_report.parameters}
-    age = lab_report.patient_age if lab_report.patient_age else 35.0 
-    gender_code = 1 if lab_report.patient_gender == 'M' else 0 
+    
+    # --- GÜVENLİ VERİ ÇEKİMİ (STATE veya LAB_REPORT) ---
+    age = state.get("patient_age") or getattr(lab_report, 'patient_age', 35.0) or 35.0
+    
+    # Cinsiyet Parse Etme (MALE, FEMALE, None)
+    raw_gender = str(state.get("patient_gender") or getattr(lab_report, 'patient_gender', "MALE")).strip().upper()
+    is_male = raw_gender in ["MALE", "M", "ERKEK", "1"]
+    
+    liver_gender = 1 if is_male else 0
+    cardio_gender = 2 if is_male else 1 
     
     def get_val(*aliases):
         for a in aliases:
@@ -59,9 +59,6 @@ def lab_analyzer_service(state: GraphState):
                 return float(extracted_dict[a])
         return np.nan
 
-    # ==========================================
-    # 3. DATAFRAMES (Columns Expected by the 5 Experts)
-    # ==========================================
     raw_dfs = {
         "Diabetes": pd.DataFrame([{
             'Pregnancies': np.nan, 
@@ -76,7 +73,7 @@ def lab_analyzer_service(state: GraphState):
         
         "Liver": pd.DataFrame([{
             'age': age,
-            'gender': gender_code,
+            'gender': liver_gender,
             'tot_bilirubin': get_val('total bilirubin', 'tbil', 'total bilirübin', 'tb', 'bil-t'),
             'direct_bilirubin': get_val('direct bilirubin', 'dbil', 'direkt bilirübin', 'bil-d'),
             'tot_proteins': get_val('total protein', 'tprot', 'tp', 'total protein'),
@@ -105,8 +102,8 @@ def lab_analyzer_service(state: GraphState):
         }]),
         
         "Cardiovascular": pd.DataFrame([{
-            'age': age * 365.25, # Dataset expects age in DAYS!
-            'gender': 2 if gender_code == 1 else 1, # Dataset codes Male:2, Female:1
+            'age': age * 365.25, 
+            'gender': cardio_gender,
             'height': get_val('height', 'boy'),
             'weight': get_val('weight', 'kilo', 'ağırlık'),
             'ap_hi': get_val('ap_hi', 'systolic', 'sistolik tansiyon', 'büyük tansiyon'),
@@ -131,11 +128,13 @@ def lab_analyzer_service(state: GraphState):
         }])
     }
 
-    # ==========================================
-    # 4. RUN MODELS AND GET PREDICTIONS
-    # ==========================================
     analysis_results = {}
     model_dir = "data/mlp/" 
+
+    # --- YENİ EKLENEN: JAVA'YA DÖNÜLECEK DEĞİŞKENLER ---
+    max_risk_score = 0.0
+    primary_prediction = "Healthy"
+    feature_importance_dict = {}
 
     for disease_name, raw_df in raw_dfs.items():
         model_path = os.path.join(model_dir, f"{disease_name}_expert_model.joblib")
@@ -146,23 +145,26 @@ def lab_analyzer_service(state: GraphState):
                 prob, pred = predict_safely(model, raw_df)
                 pred_class = int(pred)
                 
-                # --- Output Logic and Probability Calculations ---
                 if disease_name in ["Kidney_CKD", "Liver"]:
-                    # REVERSE LOGIC: 0th Index means patient
                     risk_ratio = prob[0]
                 elif disease_name == "Anemia":
-                    # MULTI-CLASS: Take the probability of the predicted class
                     risk_ratio = prob[pred_class]
                 else:
-                    # NORMAL LOGIC: 1st Index means patient (Diabetes, Cardio)
                     risk_ratio = prob[1]
                 
                 message = DIAGNOSIS_MAPPING[disease_name][pred_class]
-                
-                if disease_name == "Anemia" and pred_class != 0:
-                    analysis_results[f"{disease_name}_Report"] = f"{message} (Diagnosis Confidence: {risk_ratio*100:.1f}%)"
-                else:
-                    analysis_results[f"{disease_name}_Report"] = f"{message} (Risk Ratio: {risk_ratio*100:.1f}%)"
+                analysis_results[f"{disease_name}_Report"] = f"{message} (Risk: {risk_ratio*100:.1f}%)"
+
+                # En yüksek riskli hastalığı ve özelliklerini (XAI) kaydet
+                if risk_ratio > max_risk_score and "✅ Healthy" not in message:
+                    max_risk_score = risk_ratio
+                    primary_prediction = message.replace("⚠️ ", "")
+                    
+                    if hasattr(model, "feature_importances_"):
+                        importances = model.feature_importances_
+                        features = model.feature_names_in_
+                        fi_pairs = sorted(zip(features, importances), key=lambda x: x[1], reverse=True)
+                        feature_importance_dict = {f: float(imp) for f, imp in fi_pairs[:4] if imp > 0}
                     
             else:
                 analysis_results[f"{disease_name}_Report"] = f"Model File Not Found ({disease_name}_expert_model.joblib)"
@@ -171,7 +173,11 @@ def lab_analyzer_service(state: GraphState):
             analysis_results[f"{disease_name}_Report"] = f"Analysis Error: {str(e)}"
 
     print("✅ All 5 Expert Models executed successfully and results synthesized!")
-    for k, v in analysis_results.items():
-        print(f"   -> {k}: {v}")
-
-    return {"lab_analysis_results": analysis_results}
+    
+    # JAVA'NIN BEKLEDİĞİ TÜM STATE VERİLERİ DÖNÜLÜYOR
+    return {
+        "lab_analysis_results": analysis_results,
+        "lab_prediction": primary_prediction,
+        "lab_confidence": float(max_risk_score),
+        "feature_importance": feature_importance_dict
+    }

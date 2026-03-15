@@ -26,7 +26,7 @@ public class ChatMessageService {
     private final ConsultationRepository consultationRepository;
     private final AiIntegrationService aiIntegrationService;
 
-    // URL'leri bulmak için Repolar
+    // URL'leri bulmak ve analizleri güncellemek için Repolar
     private final ImageAnalysisRepository imageAnalysisRepository;
     private final DocumentAnalysisRepository documentAnalysisRepository;
 
@@ -44,12 +44,12 @@ public class ChatMessageService {
             throw new RuntimeException("Bu muayeneye atanmış bir hasta bulunamadı!");
         }
 
-        // --- SOHBET GEÇMİŞİNİ ALIYORUZ (Yeni mesajı kaydetmeden ÖNCE alıyoruz ki kendini geçmişte görmesin) ---
+        // --- SOHBET GEÇMİŞİNİ ALIYORUZ ---
         List<AiAgentRequest.ChatHistoryItem> history = chatMessageRepository
                 .findByConsultationIdOrderByTimestampAsc(consultationId)
                 .stream()
                 .map(m -> new AiAgentRequest.ChatHistoryItem(
-                        m.getSenderRole().name(), // "DOCTOR" veya "AI"
+                        m.getSenderRole().name(),
                         m.getMessageContent()
                 ))
                 .toList();
@@ -70,12 +70,12 @@ public class ChatMessageService {
         String documentUrl = request.documentAnalysisId() != null ?
                 documentAnalysisRepository.findById(request.documentAnalysisId()).map(DocumentAnalysis::getDocumentUrl).orElse(null) : null;
 
-        // 2. PYTHON FASTAPI'YE  İSTEĞİ AT
+        // 2. PYTHON FASTAPI'YE İSTEĞİ AT
         AiAgentRequest aiRequest = new AiAgentRequest(
                 request.messageContent(),
                 imageUrl,
                 documentUrl,
-                consultation.getChiefComplaint(), // Hastanın şikayeti eklendi!
+                consultation.getChiefComplaint(), // hasta şikayeti
 
                 patient.getAge(),
                 patient.getGender() != null ? patient.getGender().name() : null,
@@ -88,12 +88,39 @@ public class ChatMessageService {
                 patient.getCurrentMedications() == null ? java.util.Collections.emptyList() :
                         patient.getCurrentMedications().stream().map(Medication::getName).toList(),
 
-                history // Sohbet geçmişi eklendi!
+                history
         );
 
+        // PYTHON'DAN CEVAP GELİYOR
         AiAgentResponse aiResponse = aiIntegrationService.askFastApi(aiRequest);
 
-        // 3. PYTHON'DAN GELEN CEVABI AI OLARAK KAYDET
+        // --- EKLENEN KISIM: MULTIMODAL VERİLERİ VERİTABANINA İŞLEME ---
+
+        // A. Eğer bu mesajda bir Görüntü (X-Ray vb.) sorulduysa ve Python analiz ürettiyse:
+        if (request.imageAnalysisId() != null) {
+            imageAnalysisRepository.findById(request.imageAnalysisId()).ifPresent(img -> {
+                // Null kontrolü yapıyoruz ki eski analiz varsa üzerine null yazıp silmesin
+                if (aiResponse.imagePrediction() != null) img.setAiPrediction(aiResponse.imagePrediction());
+                if (aiResponse.imageConfidenceScore() != null) img.setConfidenceScore(aiResponse.imageConfidenceScore());
+                if (aiResponse.heatmapUrl() != null) img.setHeatmapUrl(aiResponse.heatmapUrl());
+
+                imageAnalysisRepository.save(img); // Güncelledik!
+            });
+        }
+
+        // B. Eğer bu mesajda bir Belge (Kan Tahlili vb.) sorulduysa ve Python analiz ürettiyse:
+        if (request.documentAnalysisId() != null) {
+            documentAnalysisRepository.findById(request.documentAnalysisId()).ifPresent(doc -> {
+                if (aiResponse.documentPrediction() != null) doc.setMlpPrediction(aiResponse.documentPrediction());
+                if (aiResponse.documentConfidenceScore() != null) doc.setConfidenceScore(aiResponse.documentConfidenceScore());
+                if (aiResponse.featureImportance() != null) doc.setFeatureImportance(aiResponse.featureImportance());
+
+                documentAnalysisRepository.save(doc); // Güncelledik!
+            });
+        }
+        // -------------------------------------------------------------
+
+        // 3. PYTHON'DAN GELEN METİN CEVABINI AI MESAJI OLARAK KAYDET
         ChatMessage aiMessage = ChatMessage.builder()
                 .consultation(consultation)
                 .senderRole(MessageSender.AI)

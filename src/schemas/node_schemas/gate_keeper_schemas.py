@@ -31,6 +31,7 @@ class LabReport(BaseModel):
     is_valid_report: bool = Field(description="Bu metin veya görsel gerçekten tıbbi bir kan/idrar tahlili raporu mu?")
     patient_age: Optional[int] = Field(None, description="Raporda yazıyorsa hastanın yaşı, yoksa null.")
     patient_gender: Optional[str] = Field(None, description="Raporda yazıyorsa hastanın cinsiyeti ('M' veya 'F'), yoksa null.")
+    patient_blood_type:Optional[str] = Field(None, description="Hastanın kan tipi.")
     parameters: List[LabParameter] = Field(
         default_factory=list, 
         description="Rapordan başarıyla çıkarılan tüm tahlil parametrelerinin listesi."

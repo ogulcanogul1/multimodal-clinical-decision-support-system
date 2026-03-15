@@ -8,14 +8,13 @@ def parser_service(state:GraphState):
     logger.info("--- INPUT PARSER STARTING ---")
     active_branches = [NodeNames.QUERY_OPTIMIZER.value]
     
-    image_path = state.get("image_path")
+    image_path = state.get("image_url")
     if image_path:
         print("Image Bulundu")
         logger.info("Image Bulundu")
         active_branches.append(NodeNames.CNN_CONTROL.value)
     
-    # DÜZELTME: Artık lab_results değil, pdf_path veya raw text arıyoruz
-    pdf_path = state.get("pdf_path")
+    pdf_path = state.get("document_url")
     raw_text = state.get("raw_document_text")
     
     if pdf_path or raw_text:

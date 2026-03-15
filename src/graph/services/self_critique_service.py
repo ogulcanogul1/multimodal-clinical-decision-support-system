@@ -9,6 +9,7 @@ def self_critique_service(state: GraphState):
     
     fused_context = state.get("fused_clinical_context", {})
     final_report = state.get("final_report", "")
+    current_retry_count = state.get("conflict_retry_count", 0)
     
     if not final_report:
         return {"critique_status": "conflict", "critique_feedback": "No final report found."}
@@ -32,20 +33,18 @@ If the report is 100% safe, accurate, and matches the facts, set status to "veri
     ])
 
     try:
-        # Factory zaten structured_output gömülü modeli veriyor!
         llm = ActiveLLMFactory.critique_llm()
         chain = prompt | llm
         
-        # Sonuç doğrudan Pydantic objesi (CritiqueOutput) olarak gelir
         critique_result: CritiqueOutput = chain.invoke({
             "context": json.dumps(fused_context, ensure_ascii=False, indent=2),
             "report": final_report
         })
         
-        status = critique_result.status
+        status = critique_result.status.strip().lower()
         feedback = critique_result.feedback
         
-        if status.lower() not in ["verified", "conflict"]:
+        if status not in ["verified", "conflict"]:
             status = "conflict"
             
     except Exception as e:
@@ -53,12 +52,19 @@ If the report is 100% safe, accurate, and matches the facts, set status to "veri
         status = "conflict"
         feedback = f"Critique failure: {str(e)}"
 
+    # --- MİMARİ KÖPRÜ (DÜZELTİLEN KISIM) ---
+    
+    new_retry_count = current_retry_count
+
     if status == "verified":
         print("   ✅ Rapor ONAYLANDI (Verified).")
+        new_retry_count = 0
     else:
+        new_retry_count += 1
         print(f"   🚨 Rapor REDDEDİLDİ (Conflict)! Hata: {feedback}")
+        
 
     return {
         "critique_status": status,
-        "critique_feedback": feedback
+        "critique_feedback": feedback,
     }

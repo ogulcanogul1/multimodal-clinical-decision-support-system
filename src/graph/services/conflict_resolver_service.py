@@ -9,7 +9,7 @@ def conflict_resolver_service(state: GraphState):
     print("\n🔄 [CONFLICT RESOLVER] Çelişki tespit edildi! Başhekim (Diagnostic Agent) için düzeltme talimatı hazırlanıyor...")
     
     # 1. State'ten Denetçi Geri Bildirimini ve Deneme Sayısını Al
-    feedback = state.get("critique_feedback", "Bilinmeyen bir tıbbi tutarsızlık veya halüsinasyon tespit edildi.")
+    feedback = state.get("critique_feedback", "An unknown medical inconsistency or hallucination was detected.")
     retry_count = state.get("conflict_retry_count", 0)
     
     # ==========================================
@@ -20,32 +20,32 @@ def conflict_resolver_service(state: GraphState):
         print("   🚨 [DİKKAT] Maksimum düzeltme denemesine ulaşıldı! Sonsuz döngü engelleniyor.")
         
         # Hastayı riske atmamak için raporun sonuna yasal bir uyarı ekliyoruz
-        emergency_warning = "\n\n*(Sistem Notu: Yapay zeka tabanlı bu rapor, bazı tıbbi çapraz kontrolleri tam olarak geçememiştir. Lütfen teşhis için doğrudan uzman bir hekime başvurunuz.)*"
+        # (Eğer doktorun arayüzü İngilizce ise bu uyarıyı da İngilizce yapmalısın)
+        emergency_warning = "\n\n*(System Note: This AI-generated report failed some internal medical cross-checks. Please consult a human specialist for a definitive diagnosis.)*"
         forced_report = state.get("final_report", "") + emergency_warning
         
         return {
             "final_report": forced_report,
             "critique_status": "verified", # Router'ı kandırıp akışı "__end__" düğümüne bitirmeye zorluyoruz
-            "retry_count": retry_count + 1
+            "conflict_retry_count": retry_count + 1 # DÜZELTME: State'teki doğru değişken ismi!
         }
 
     # ==========================================
-    # 3. BAŞHEKİM İÇİN DÜZELTME TALİMATI HAZIRLAMA
+    # 3. BAŞHEKİM İÇİN DÜZELTME TALİMATI (İNGİLİZCEYE ÇEVRİLDİ)
     # ==========================================
-    # Başhekimin (diagnostic_agent) prompt'una eklenecek olan o sert uyarı metni
+    # Başhekimin LLM'i İngilizce çalıştığı için fırçayı da İngilizce atıyoruz.
     resolution_guidance = (
-        f"\n\n⚠️ DİKKAT: YAZDIĞINIZ ÖNCEKİ RAPOR TIBBİ DENETÇİ TARAFINDAN REDDEDİLDİ ⚠️\n"
-        f"Reddedilme Sebebi / Bulunan Hatalar:\n"
+        f"\n\n⚠️ CRITICAL WARNING: YOUR PREVIOUS REPORT WAS REJECTED BY THE MEDICAL QA AUDITOR ⚠️\n"
+        f"Reason for Rejection / Errors Found:\n"
         f"[{feedback}]\n\n"
-        f"GÖREVİN: Lütfen yukarıdaki geri bildirimi DİKKATLİCE okuyarak raporu BAŞTAN AŞAĞI YENİDEN YAZ.\n"
-        f"Reddedilme sebebindeki çelişkileri veya halüsinasyonları kesinlikle tekrar etme. "
-        f"Sadece sana verilen Raw Clinical Facts (Ham Klinik Gerçekler) doğrultusunda hareket et."
+        f"YOUR TASK: Carefully read the feedback above and REWRITE the entire report.\n"
+        f"Do NOT repeat the hallucinations or contradictions mentioned in the rejection reason. "
+        f"Strictly adhere ONLY to the provided 'Raw Clinical Facts'."
     )
 
     print(f"   -> Düzeltme talimatı hazırlandı. (Deneme: {retry_count + 1})")
     print("   -> Akış yeniden 'diagnostic_agent' düğümüne yönlendiriliyor...")
 
-    # State'i güncelliyoruz. Bu sayede Diagnostic Agent tekrar çalıştığında bu yönergeyi okuyacak.
     return {
         "resolution_guidance": resolution_guidance,
         "conflict_retry_count": retry_count + 1

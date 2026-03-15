@@ -23,7 +23,7 @@ public class ImageAnalysis {
     private Consultation consultation;
 
     @Column(nullable = false, length = 500)
-    private String originalImageUrl; // S3/MinIO'daki orijinal röntgen linki
+    private String originalImageUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
