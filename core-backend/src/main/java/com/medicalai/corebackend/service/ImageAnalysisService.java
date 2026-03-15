@@ -1,17 +1,23 @@
 package com.medicalai.corebackend.service;
 
 import com.medicalai.corebackend.dto.request.AiResultUpdateRequest;
-import com.medicalai.corebackend.dto.request.ImageAnalysisRequest;
 import com.medicalai.corebackend.dto.response.ImageAnalysisResponse;
 import com.medicalai.corebackend.entity.Consultation;
 import com.medicalai.corebackend.entity.ImageAnalysis;
+import com.medicalai.corebackend.entity.enums.AnalysisType;
 import com.medicalai.corebackend.repository.ConsultationRepository;
 import com.medicalai.corebackend.repository.ImageAnalysisRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,19 +27,27 @@ public class ImageAnalysisService {
     private final ImageAnalysisRepository imageAnalysisRepository;
     private final ConsultationRepository consultationRepository;
 
+    // Görüntülerin kaydedileceği lokal dizin (İleride AWS S3'e taşınabilir)
+    @Value("${app.storage.image-dir}")
+    private String UPLOAD_IMAGE_DIR;
+
     /**
-     * 1. Adım: Doktor görüntüyü yüklediğinde kaydı oluşturur.
-     * (Henüz AI tahmini yoktur, PENDING durumu gibi düşünebilirsin).
+     * 1. Adım: Doktor frontend'den resmi yükler. Dosya sunucuya kaydedilir,
+     * veritabanında PENDING (bekleyen) bir analiz kaydı açılır.
      */
     @Transactional
-    public ImageAnalysisResponse createImageAnalysis(ImageAnalysisRequest request) {
-        Consultation consultation = consultationRepository.findById(request.consultationId())
-                .orElseThrow(() -> new RuntimeException("Muayene bulunamadı: " + request.consultationId()));
+    public ImageAnalysisResponse createImageAnalysis(String consultationId, AnalysisType analysisType, MultipartFile file) {
+
+        Consultation consultation = consultationRepository.findById(consultationId)
+                .orElseThrow(() -> new RuntimeException("Muayene bulunamadı: " + consultationId));
+
+        // Dosyayı diske kaydet ve yolunu al
+        String savedImageUrl = saveFileLocally(file);
 
         ImageAnalysis analysis = ImageAnalysis.builder()
                 .consultation(consultation)
-                .originalImageUrl(request.originalImageUrl())
-                .analysisType(request.analysisType())
+                .originalImageUrl(savedImageUrl) // Artık Request'ten değil, kaydettiğimiz yerden alıyoruz
+                .analysisType(analysisType)
                 .build();
 
         return mapToResponse(imageAnalysisRepository.save(analysis));
@@ -55,7 +69,7 @@ public class ImageAnalysisService {
     }
 
     /**
-     * 3. Adım: Doktor yapay zekanın teşhisine katılıyor mu? (RLHF - Reinforcement Learning from Human Feedback için çok değerli!)
+     * 3. Adım: Doktor yapay zekanın teşhisine katılıyor mu? (RLHF)
      */
     @Transactional
     public ImageAnalysisResponse submitDoctorFeedback(String id, boolean isApproved) {
@@ -75,6 +89,38 @@ public class ImageAnalysisService {
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Dosyayı sunucuya fiziksel olarak kaydeden yardımcı metod.
+     */
+    private String saveFileLocally(MultipartFile file) {
+        try {
+            Path uploadPath = Paths.get(UPLOAD_IMAGE_DIR);
+            // Klasör yoksa oluştur
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            String originalFileName = file.getOriginalFilename();
+            String extension = "";
+            if (originalFileName != null && originalFileName.contains(".")) {
+                extension = originalFileName.substring(originalFileName.lastIndexOf("."));
+            }
+
+            // İsim çakışmasını önlemek için rastgele UUID kullanıyoruz
+            String newFileName = UUID.randomUUID().toString() + extension;
+            Path filePath = uploadPath.resolve(newFileName);
+
+            // Dosyayı diske yaz
+            Files.copy(file.getInputStream(), filePath);
+
+            // Klasör yolunu string olarak dön (Örn: uploads/images/123e4567-e89b...jpg)
+            return filePath.toString().replace("\\", "/");
+
+        } catch (Exception e) {
+            throw new RuntimeException("Dosya kaydedilirken hata oluştu: " + e.getMessage());
+        }
     }
 
     private ImageAnalysisResponse mapToResponse(ImageAnalysis a) {

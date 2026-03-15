@@ -24,3 +24,7 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+app:
+  storage:
+    image-dir: "../data/resource_db/images"

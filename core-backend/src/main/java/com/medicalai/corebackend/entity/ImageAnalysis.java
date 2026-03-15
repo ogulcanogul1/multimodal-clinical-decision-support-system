@@ -34,7 +34,7 @@ public class ImageAnalysis {
 
     private Double confidenceScore; // Örn: 0.98
 
-    @Column(length = 500)
+    @Column(length = 500,nullable = true)
     private String heatmapUrl; // Grad-CAM açıklanabilir AI ısı haritası linki
 
     private Boolean doctorFeedback; // Doktor bu teşhisi onayladı mı? (True/False)
