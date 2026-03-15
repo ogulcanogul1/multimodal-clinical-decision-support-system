@@ -1,20 +1,24 @@
 package com.medicalai.corebackend.dto.request;
 
-import com.medicalai.corebackend.entity.enums.BloodType;
-import com.medicalai.corebackend.entity.enums.Gender;
-
 import java.util.List;
 
 public record AiAgentRequest(
-        String consultationId,
-        String messageContent,
-        String imageUrl,      // ID değil, URL/Path gidiyor!
-        String documentUrl,    // ID değil, URL/Path gidiyor!
+        String messageContent, // Doktorun anlık sorusu
+        String imageUrl,
+        String documentUrl,
+        String chiefComplaint, // Hastanın ana şikayeti
 
-        // --- KLİNİK BAĞLAM (CLINICAL CONTEXT) ---
+        // --- KLİNİK BAĞLAM (Hasta Verileri) ---
         Integer patientAge,
-        Gender patientGender,
-        BloodType bloodType,
+        String patientGender,
+        String bloodType,
         List<String> chronicDiseases,
-        List<String> allergies
-) {}
+        List<String> allergies,
+        List<String> currentMedications,
+
+        // --- SOHBET GEÇMİŞİ (Context) ---
+        List<ChatHistoryItem> chatHistory
+) {
+    // Sohbet geçmişi için küçük bir alt veri yapısı (Rol ve Mesaj)
+    public record ChatHistoryItem(String role, String content) {}
+}

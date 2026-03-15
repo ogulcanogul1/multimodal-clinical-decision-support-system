@@ -3,7 +3,9 @@ package com.medicalai.corebackend.entity;
 import com.medicalai.corebackend.entity.enums.ConsultationStatus;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "consultations")
@@ -34,6 +36,9 @@ public class Consultation {
 
     @Column(columnDefinition = "TEXT")
     private String chiefComplaint; // Hastanın ana şikayeti
+
+    @OneToMany(mappedBy = "consultation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<ChatMessage> messages;
 
     @Column(updatable = false)
     private LocalDateTime createdAt;

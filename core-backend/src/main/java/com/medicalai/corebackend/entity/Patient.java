@@ -7,6 +7,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.List;
 
 @Entity
@@ -42,22 +43,32 @@ public class Patient {
     @Column(nullable = false,length = 20)
     private BloodType bloodType;
 
-    @ElementCollection(fetch = FetchType.EAGER) // RAG yaparken hemen gelsin diye EAGER yapabilirsin
-    @CollectionTable(name = "patient_chronic_diseases", joinColumns = @JoinColumn(name = "patient_id"))
-    @Column(name = "disease_name")
-    private List<String> chronicDiseases;
+    // 1. Kronik Hastalıklar (Many-To-Many)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "patient_chronic_diseases", // Kesişim tablosu
+            joinColumns = @JoinColumn(name = "patient_id"),
+            inverseJoinColumns = @JoinColumn(name = "disease_id")
+    )
+    private List<Disease> chronicDiseases;
 
-    // 2. Alerjiler Tablosu
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "patient_allergies", joinColumns = @JoinColumn(name = "patient_id"))
-    @Column(name = "allergy_name")
-    private List<String> allergies;
+    // 2. Alerjiler (Many-To-Many)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "patient_allergies",
+            joinColumns = @JoinColumn(name = "patient_id"),
+            inverseJoinColumns = @JoinColumn(name = "allergy_id")
+    )
+    private List<Allergy> allergies;
 
-    // 3. Kullanılan İlaçlar Tablosu
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "patient_medications", joinColumns = @JoinColumn(name = "patient_id"))
-    @Column(name = "medication_name")
-    private List<String> currentMedications;
+    // 3. Kullanılan İlaçlar (Many-To-Many)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "patient_medications",
+            joinColumns = @JoinColumn(name = "patient_id"),
+            inverseJoinColumns = @JoinColumn(name = "medication_id")
+    )
+    private List<Medication> currentMedications;
 
     @Column(updatable = false)
     private LocalDateTime createdAt;
@@ -77,4 +88,12 @@ public class Patient {
     public String getFullName() {
         return firstName + " " + lastName;
     }
+
+    public Integer getAge() {
+        if (this.dateOfBirth == null) {
+            return null; // Eğer doğum tarihi girilmemişse sistem çökmesin
+        }
+        return Period.between(this.dateOfBirth, LocalDate.now()).getYears();
+    }
 }
+

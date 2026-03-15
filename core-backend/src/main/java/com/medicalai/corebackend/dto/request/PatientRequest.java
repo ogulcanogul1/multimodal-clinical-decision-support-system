@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import java.util.List;
 
 public record PatientRequest(
         @NotBlank(message = "TC Kimlik no zorunludur")
@@ -23,5 +24,9 @@ public record PatientRequest(
 
         Gender gender,
         BloodType bloodType,
-        String chronicDiseases
+
+        // Artık String değil, sistemdeki standart kayıtların ID'lerini alıyoruz
+        List<Long> chronicDiseaseIds,
+        List<Long> allergyIds,
+        List<Long> currentMedicationIds
 ) {}

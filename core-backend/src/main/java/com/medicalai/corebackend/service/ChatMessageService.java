@@ -4,16 +4,13 @@ import com.medicalai.corebackend.dto.request.AiAgentRequest;
 import com.medicalai.corebackend.dto.request.ChatMessageRequest;
 import com.medicalai.corebackend.dto.response.AiAgentResponse;
 import com.medicalai.corebackend.dto.response.ChatMessageResponse;
-import com.medicalai.corebackend.entity.ChatMessage;
-import com.medicalai.corebackend.entity.Consultation;
-import com.medicalai.corebackend.entity.DocumentAnalysis;
-import com.medicalai.corebackend.entity.ImageAnalysis;
+import com.medicalai.corebackend.entity.*;
 import com.medicalai.corebackend.entity.enums.ConsultationStatus;
 import com.medicalai.corebackend.entity.enums.MessageSender;
 import com.medicalai.corebackend.repository.ChatMessageRepository;
 import com.medicalai.corebackend.repository.ConsultationRepository;
-import com.medicalai.corebackend.repository.ImageAnalysisRepository;
 import com.medicalai.corebackend.repository.DocumentAnalysisRepository;
+import com.medicalai.corebackend.repository.ImageAnalysisRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +26,7 @@ public class ChatMessageService {
     private final ConsultationRepository consultationRepository;
     private final AiIntegrationService aiIntegrationService;
 
-    // URL'leri bulmak için Repoları ekledik
+    // URL'leri bulmak için Repolar
     private final ImageAnalysisRepository imageAnalysisRepository;
     private final DocumentAnalysisRepository documentAnalysisRepository;
 
@@ -42,7 +39,22 @@ public class ChatMessageService {
             throw new RuntimeException("Bu muayene kapatılmış! Yeni mesaj gönderilemez.");
         }
 
-        // 1. DOKTORUN MESAJINI KAYDET (Veritabanında ID tutmak mantıklı, ilişkisel veri için)
+        Patient patient = consultation.getPatient();
+        if (patient == null) {
+            throw new RuntimeException("Bu muayeneye atanmış bir hasta bulunamadı!");
+        }
+
+        // --- SOHBET GEÇMİŞİNİ ALIYORUZ (Yeni mesajı kaydetmeden ÖNCE alıyoruz ki kendini geçmişte görmesin) ---
+        List<AiAgentRequest.ChatHistoryItem> history = chatMessageRepository
+                .findByConsultationIdOrderByTimestampAsc(consultationId)
+                .stream()
+                .map(m -> new AiAgentRequest.ChatHistoryItem(
+                        m.getSenderRole().name(), // "DOCTOR" veya "AI"
+                        m.getMessageContent()
+                ))
+                .toList();
+
+        // 1. DOKTORUN YENİ MESAJINI KAYDET
         ChatMessage doctorMessage = ChatMessage.builder()
                 .consultation(consultation)
                 .senderRole(MessageSender.DOCTOR)
@@ -52,27 +64,31 @@ public class ChatMessageService {
                 .build();
         chatMessageRepository.save(doctorMessage);
 
-        // --- ID'LERİ URL'YE ÇEVİRME İŞLEMİ (SENİN HARİKA UYARIN) ---
-        String imageUrl = null;
-        if (request.imageAnalysisId() != null) {
-            imageUrl = imageAnalysisRepository.findById(request.imageAnalysisId())
-                    .map(ImageAnalysis::getOriginalImageUrl)
-                    .orElse(null);
-        }
+        // --- ID'LERİ URL'YE ÇEVİRME ---
+        String imageUrl = request.imageAnalysisId() != null ?
+                imageAnalysisRepository.findById(request.imageAnalysisId()).map(ImageAnalysis::getOriginalImageUrl).orElse(null) : null;
+        String documentUrl = request.documentAnalysisId() != null ?
+                documentAnalysisRepository.findById(request.documentAnalysisId()).map(DocumentAnalysis::getDocumentUrl).orElse(null) : null;
 
-        String documentUrl = null;
-        if (request.documentAnalysisId() != null) {
-            documentUrl = documentAnalysisRepository.findById(request.documentAnalysisId())
-                    .map(DocumentAnalysis::getDocumentUrl)
-                    .orElse(null);
-        }
-
-        // 2. PYTHON FASTAPI'YE GERÇEK HTTP İSTEĞİ AT (Artık URL'ler gidiyor)
+        // 2. PYTHON FASTAPI'YE  İSTEĞİ AT
         AiAgentRequest aiRequest = new AiAgentRequest(
-                consultationId,
                 request.messageContent(),
-                imageUrl,      // Python direkt resmi okuyacak
-                documentUrl    // Python direkt PDF'i okuyacak
+                imageUrl,
+                documentUrl,
+                consultation.getChiefComplaint(), // Hastanın şikayeti eklendi!
+
+                patient.getAge(),
+                patient.getGender() != null ? patient.getGender().name() : null,
+                patient.getBloodType() != null ? patient.getBloodType().name() : null,
+
+                patient.getChronicDiseases() == null ? java.util.Collections.emptyList() :
+                        patient.getChronicDiseases().stream().map(Disease::getName).toList(),
+                patient.getAllergies() == null ? java.util.Collections.emptyList() :
+                        patient.getAllergies().stream().map(Allergy::getName).toList(),
+                patient.getCurrentMedications() == null ? java.util.Collections.emptyList() :
+                        patient.getCurrentMedications().stream().map(Medication::getName).toList(),
+
+                history // Sohbet geçmişi eklendi!
         );
 
         AiAgentResponse aiResponse = aiIntegrationService.askFastApi(aiRequest);
@@ -87,8 +103,7 @@ public class ChatMessageService {
                 .documentAnalysisId(request.documentAnalysisId())
                 .build();
 
-        ChatMessage savedAiMessage = chatMessageRepository.save(aiMessage);
-        return mapToResponse(savedAiMessage);
+        return mapToResponse(chatMessageRepository.save(aiMessage));
     }
 
     @Transactional(readOnly = true)
