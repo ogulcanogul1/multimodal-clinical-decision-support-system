@@ -15,32 +15,29 @@ def conflict_resolver_service(state: GraphState):
     # ==========================================
     # 2. SONSUZ DÖNGÜ KORUMASI (Fail-Safe)
     # ==========================================
-    # Eğer Başhekim 3 denemede hala halüsinasyon görüyorsa, döngüyü zorla kır!
     if retry_count >= 2:
         print("   🚨 [DİKKAT] Maksimum düzeltme denemesine ulaşıldı! Sonsuz döngü engelleniyor.")
         
-        # Hastayı riske atmamak için raporun sonuna yasal bir uyarı ekliyoruz
-        # (Eğer doktorun arayüzü İngilizce ise bu uyarıyı da İngilizce yapmalısın)
         emergency_warning = "\n\n*(System Note: This AI-generated report failed some internal medical cross-checks. Please consult a human specialist for a definitive diagnosis.)*"
         forced_report = state.get("final_report", "") + emergency_warning
         
         return {
             "final_report": forced_report,
             "critique_status": "verified", # Router'ı kandırıp akışı "__end__" düğümüne bitirmeye zorluyoruz
-            "conflict_retry_count": retry_count + 1 # DÜZELTME: State'teki doğru değişken ismi!
+            "conflict_retry_count": retry_count + 1 
         }
 
     # ==========================================
-    # 3. BAŞHEKİM İÇİN DÜZELTME TALİMATI (İNGİLİZCEYE ÇEVRİLDİ)
+    # 3. BAŞHEKİM İÇİN DÜZELTME TALİMATI (İNGİLİZCEYE ÇEVRİLDİ VE RAG EKLENDİ)
     # ==========================================
-    # Başhekimin LLM'i İngilizce çalıştığı için fırçayı da İngilizce atıyoruz.
     resolution_guidance = (
         f"\n\n⚠️ CRITICAL WARNING: YOUR PREVIOUS REPORT WAS REJECTED BY THE MEDICAL QA AUDITOR ⚠️\n"
         f"Reason for Rejection / Errors Found:\n"
         f"[{feedback}]\n\n"
         f"YOUR TASK: Carefully read the feedback above and REWRITE the entire report.\n"
         f"Do NOT repeat the hallucinations or contradictions mentioned in the rejection reason. "
-        f"Strictly adhere ONLY to the provided 'Raw Clinical Facts'."
+        # MİMARİ DÜZELTME: "and 'Medical Literature'" eklendi!
+        f"Strictly adhere ONLY to the provided 'Raw Clinical Facts' and 'Medical Literature'."
     )
 
     print(f"   -> Düzeltme talimatı hazırlandı. (Deneme: {retry_count + 1})")

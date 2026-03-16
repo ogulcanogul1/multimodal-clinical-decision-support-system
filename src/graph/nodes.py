@@ -39,25 +39,34 @@ def web_research_node(state: GraphState):
     """Tavily üzerinden akademik tıbbi tarama yapar."""
     return web_research_service(state=state)
 
+
 def knowledge_synthesis_node(state: GraphState):
-    """Arama sonuçlarını sentezler ve kaynakları etiketler."""
-    logger.info("--- KNOWLEDGE SYNTHESIS: ASSIGNING CITATION IDS ---")
-    all_docs:List[Chunk] = state.get("retrieved_docs", [])
+    """Arama sonuçlarını sentezler, kaynakları etiketler ve notlandırıcı (grader) için hazırlar."""
+    logger.info("--- 📚 KNOWLEDGE SYNTHESIS: ASSIGNING CITATION IDS ---")
+    
+    all_docs: List[Chunk] = state.get("retrieved_docs", [])
     
     if not all_docs:
-        return {} # DÜZELTME: Boş dön
+        logger.warning("No documents retrieved from searches.")
+        return {"knowledge_retrieved_docs": []}
 
+    processed_docs = []
+    
     for i, doc in enumerate(all_docs):
         doc.metadata.citation_id = f"Ref-{i+1}"
         prefix = f"[[SOURCE ID: {doc.metadata.citation_id}]] | SOURCE: {doc.metadata.source}\n"
+        
         if not doc.content.startswith("[[SOURCE ID:"):
             doc.content = prefix + doc.content
+            
+        processed_docs.append(doc)
 
-    logger.info(f"Assigned Citation IDs to {len(all_docs)} documents.")
+    logger.info(f"Assigned Citation IDs to {len(processed_docs)} documents.")
 
-    # DÜZELTME: Döngü zaten nesneleri güncelledi. 
-    # Tekrar 'retrieved_docs' dönersek operator.add listeyi ikiye katlar! Boş dönüyoruz.
-    return {}
+    # Grader'ın (Notlandırıcının) okuması için yeni bir ara havuza aktarıyoruz
+    return {
+        "knowledge_retrieved_docs": processed_docs
+    }
 
 def retrieval_grader_node(state: GraphState):
     """Arama kalitesini puanlar (Retry mi yoksa Fusion mı?)."""

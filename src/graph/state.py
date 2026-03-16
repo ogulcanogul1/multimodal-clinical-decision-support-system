@@ -28,11 +28,12 @@ class GraphState(TypedDict):
     # --- RAG & RESEARCH INTELLIGENCE ---
     optimized_queries: Dict[str, Any] 
     retrieved_docs: Annotated[List[Chunk], operator.add] 
-    final_retrieved_docs: List[Chunk] 
+    final_retrieved_docs: Optional[List[Chunk]] 
     web_results: List[Dict[str, Any]]
     retrieval_retry_count: int 
     is_search_reliable: bool 
     rag_weight: float
+    knowledge_retrieved_docs:Optional[List[Chunk]]
     
     # --- MULTIMODAL ANALİZ & XAI ---
     image_features: Optional[Any]     

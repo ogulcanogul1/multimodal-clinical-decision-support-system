@@ -16,20 +16,27 @@ def web_research_service(state: GraphState):
     logger.info("--- 🌐 WEB RESEARCH & RERANK STARTING ---")
     
     try:
-        query = state.get("query") 
+        # Asıl soru ve optimizer sonuçları
+        original_query = state.get("message_content") or state.get("query") or ""
         opt_queries = state.get("optimized_queries", {})
         web_queries = opt_queries.get("web_search_queries", [])
+        
+        # --- RERANKER İÇİN MİMARİ DÜZELTME ---
+        # Reranker'a sadece "Tedavi nedir?" dersek yanılır. 
+        # Ona tıp literatürüne en uygun, hastalıkları barındıran sorguyu (vector_query) vermeliyiz.
+        rerank_context = opt_queries.get("vector_store_query") or original_query
         
         if not web_queries:
             logger.warning("No web queries found in state!")
             return {"status": SystemStatus.FAILED.value}
 
-        search_tool = TavilySearchResults(k=2)
+        search_tool = TavilySearchResults(k=2) # Her sorgu için 2 sayfa
         MAX_CHAR_LIMIT = 5000 
         all_web_chunks = []
 
         # 1. Normal for döngüsü ile tüm web verilerini topla
         for q in web_queries:
+            logger.info(f"🌐 Searching Web: {q}")
             try:
                 search_results = search_tool.invoke({"query": q})
                 for res in search_results:
@@ -54,11 +61,11 @@ def web_research_service(state: GraphState):
             logger.warning("No web chunks retrieved.")
             return {"retrieved_docs": []}
 
-        # 2. ENTEGRE RERANKER KATMANI
+        # 2. ENTEGRE RERANKER KATMANI (GÜNCELLENDİ)
         logger.info(f"🎯 Reranking {len(all_web_chunks)} web chunks with BGE...")
         
         final_web_chunks = reranker_service.rerank(
-            query=query, 
+            query=rerank_context, # DÜZELTME: Reranker artık zengin bağlamı kullanıyor!
             documents=all_web_chunks, 
             top_k=3
         )

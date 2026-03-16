@@ -9,23 +9,31 @@ def self_critique_service(state: GraphState):
     
     fused_context = state.get("fused_clinical_context", {})
     final_report = state.get("final_report", "")
-    current_retry_count = state.get("conflict_retry_count", 0)
     
+    # --- MİMARİ DÜZELTME 1: RAG MAKALELERİNİ DENETÇİYE DE VERİYORUZ ---
+    final_docs = state.get("final_retrieved_docs", [])
+    if final_docs:
+        doc_texts = [getattr(doc, 'content', str(doc)) for doc in final_docs]
+        literature_text = "\n\n".join(doc_texts)
+    else:
+        literature_text = "No external medical literature was used."
+        
     if not final_report:
         return {"critique_status": "conflict", "critique_feedback": "No final report found."}
 
+    # --- MİMARİ DÜZELTME 2: SİSTEM PROMPTU GÜNCELLENDİ ---
     system_instruction = """You are a strict Medical Quality Assurance (QA) Auditor.
-Compare the 'Raw Clinical Facts' against the 'Generated Doctor's Report'.
+Compare the 'Raw Clinical Facts' & 'Medical Literature' against the 'Generated Doctor's Report'.
 
 CRITICAL RULES FOR FAILURE (Output status: "conflict"):
-1. Hallucination: Mentioning a disease/anomaly NOT present in the Raw Facts.
+1. Hallucination: Mentioning a disease, anomaly, or treatment NOT present in the Raw Facts or Medical Literature.
 2. Contradiction: Calling an abnormal test 'normal' or vice versa.
 3. Definitive Diagnosis: Making a definitive legal diagnosis instead of a risk assessment.
 
 If ANY rule is violated, set status to "conflict" and write what needs to be fixed in "feedback".
-If the report is 100% safe, accurate, and matches the facts, set status to "verified" and feedback to "Approved"."""
+If the report is 100% safe, accurate, and matches the facts and literature, set status to "verified" and feedback to "Approved"."""
 
-    human_message = "RAW CLINICAL FACTS:\n{context}\n\nGENERATED REPORT:\n{report}"
+    human_message = "RAW CLINICAL FACTS:\n{context}\n\nMEDICAL LITERATURE:\n{literature}\n\nGENERATED REPORT:\n{report}"
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_instruction),
@@ -38,6 +46,7 @@ If the report is 100% safe, accurate, and matches the facts, set status to "veri
         
         critique_result: CritiqueOutput = chain.invoke({
             "context": json.dumps(fused_context, ensure_ascii=False, indent=2),
+            "literature": literature_text, # Literatür eklendi!
             "report": final_report
         })
         
@@ -52,18 +61,13 @@ If the report is 100% safe, accurate, and matches the facts, set status to "veri
         status = "conflict"
         feedback = f"Critique failure: {str(e)}"
 
-    # --- MİMARİ KÖPRÜ (DÜZELTİLEN KISIM) ---
-    
-    new_retry_count = current_retry_count
-
+    # --- MİMARİ KÖPRÜ (ÖLÜ KODLAR TEMİZLENDİ) ---
     if status == "verified":
         print("   ✅ Rapor ONAYLANDI (Verified).")
-        new_retry_count = 0
     else:
-        new_retry_count += 1
         print(f"   🚨 Rapor REDDEDİLDİ (Conflict)! Hata: {feedback}")
-        
 
+    # Sayaç artırma işi Conflict Resolver'da olduğu için sadece durumu dönüyoruz
     return {
         "critique_status": status,
         "critique_feedback": feedback,

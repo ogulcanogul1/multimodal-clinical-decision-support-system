@@ -17,16 +17,23 @@ def diagnostic_agent_service(state: GraphState):
     
     # 1. Extract Synthesized Data and State Variables
     context = state.get("fused_clinical_context", {})
-    # DÜZELTME: FastAPI'de ismini message_content yapmıştık, geriye dönük uyum için ikisine de bakıyoruz
     query = state.get("message_content") or state.get("query") or "Please analyze my overall health status."
     guidance = state.get("resolution_guidance", "")
     chat_history = state.get("chat_history", [])
 
-    # --- YENİ EKLENEN: HASTA PROFİLİ VE GEÇMİŞİ ---
+    # --- HASTA PROFİLİ VE ANORMALLİKLER (Fusion'dan gelenler) ---
     patient_profile = context.get("Patient_Profile", {})
     lab_anomalies = context.get("Lab_Anomalies", [])
     image_anomalies = context.get("Image_Anomalies", [])
-    literature_text = context.get("Literature_Support", "No specific medical literature found.")
+    
+    # --- MİMARİ DÜZELTME: RAG MAKALELERİNİ DOĞRUDAN STATE'TEN ÇEKİYORUZ ---
+    final_docs = state.get("final_retrieved_docs", [])
+    if final_docs:
+        # Grader'dan geçen makalelerin içeriğini alt alta birleştiriyoruz
+        doc_texts = [getattr(doc, 'content', str(doc)) for doc in final_docs]
+        literature_text = "\n\n".join(doc_texts)
+    else:
+        literature_text = "No specific medical literature found for this case."
     
     # 2. Build Clean Clinical Tables for the LLM
     
@@ -44,14 +51,13 @@ def diagnostic_agent_service(state: GraphState):
     if not lab_anomalies and not image_anomalies:
         clinical_summary = "All provided laboratory and radiological findings are within normal limits. No anomalies detected."
     else:
-        clinical_summary = f"🩸 Laboratory Anomalies:\n- " + "\n- ".join(lab_anomalies) if lab_anomalies else "🩸 Laboratory: No anomalies detected."
-        clinical_summary += f"\n\n📸 Radiological Anomalies:\n- " + "\n- ".join(image_anomalies) if image_anomalies else "\n\n📸 Radiology: No anomalies detected."
+        clinical_summary = f"Laboratory Anomalies:\n- " + "\n- ".join(lab_anomalies) if lab_anomalies else "Laboratory: No anomalies detected."
+        clinical_summary += f"\n\nRadiological Anomalies:\n- " + "\n- ".join(image_anomalies) if image_anomalies else "\n\nRadiology: No anomalies detected."
 
-    # C. Sohbet Geçmişi Formatlama (LLM doktorun önceki sorularını bilsin)
+    # C. Sohbet Geçmişi Formatlama
     history_text = ""
     if chat_history:
         history_text = "PREVIOUS CONVERSATION HISTORY:\n"
-        # Context taşmasın diye sadece son 6 mesajı (3 tur) alıyoruz
         for msg in chat_history[-6:]: 
             role_name = "Doctor" if msg.get("role") in ["DOCTOR", "user"] else "AI Assistant"
             history_text += f"[{role_name}]: {msg.get('content')}\n"
@@ -96,7 +102,6 @@ Please format your final report strictly using the following structure:
         llm = ActiveLLMFactory.diagnostic_llm()
         chain = prompt | llm
         
-        # Bütün eksik parçaları prompt'a gönderiyoruz
         response = chain.invoke({
             "profile_summary": profile_summary,
             "clinical_summary": clinical_summary,

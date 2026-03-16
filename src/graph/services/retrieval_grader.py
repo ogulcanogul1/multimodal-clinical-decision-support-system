@@ -9,19 +9,26 @@ def retrieval_grader_service(state: GraphState):
     """
     Dökümanları sırayla değerlendirir. 
     Eğer geçerli döküman yoksa sayacı artırır. Maksimum denemeye ulaşılırsa 
-    literatür taramasını sonlandırıp elindeki boş listeyle Fusion'a geçer.
+    literatür taramasını sonlandırıp elindeki boş listeyle Başhekime (Diagnostic Agent) geçer.
     """
     retry_count = state.get("retrieval_retry_count", 0)
     MAX_RETRIES = 2 # Toplam 3 deneme hakkı (0, 1, 2)
     
     logger.info(f"--- ⚖️ RETRIEVAL GRADER STARTING (Deneme: {retry_count + 1}/{MAX_RETRIES + 1}) ---")
     
-    query = state.get("query")
-    docs = state.get("retrieved_docs", [])
+    # 1. ARAMANIN ASIL AMACINI ÇEK (Kör Notlandırmayı Engelliyoruz)
+    user_query = state.get("message_content") or state.get("query")
+    opt_queries = state.get("optimized_queries", {})
+    # Optimizer'ın ürettiği zenginleştirilmiş sorguyu kullanıyoruz
+    clinical_query = opt_queries.get("vector_store_query", user_query)
+    
+    # 2. ÖNCEKİ DÜĞÜMDEN GELEN LİSTEYİ AL
+    docs = state.get("knowledge_retrieved_docs", [])
     
     # SONSUZ DÖNGÜ KORUMASI (Fail-Safe)
     if retry_count >= MAX_RETRIES:
-        logger.warning(f"🚨 Maksimum RAG deneme sayısına ({MAX_RETRIES+1}) ulaşıldı. Geçerli döküman bulunamadı. RAG pas geçilerek Adaptive Fusion'a ilerleniyor.")
+        # MİMARİ DÜZELTME: Artık Fusion'a değil Diagnostic Agent'a gidiyor!
+        logger.warning(f"🚨 Maksimum RAG deneme sayısına ({MAX_RETRIES+1}) ulaşıldı. Geçerli döküman bulunamadı. RAG pas geçilerek Diagnostic Agent'a ilerleniyor.")
         return {
             "final_retrieved_docs": []
         }
@@ -30,17 +37,21 @@ def retrieval_grader_service(state: GraphState):
         logger.warning("Değerlendirilecek döküman yok. RAG döngüsüne (Retry) dönülüyor...")
         return {"retrieval_retry_count": retry_count + 1}
 
+    # Factory zaten structured_output gömülü model dönüyor
     llm = ActiveLLMFactory.retrieval_grader_llm() 
     
+    # 3. PROMPT GÜNCELLEMESİ (Clinical Query kullanılıyor)
     system_prompt = """You are a highly strict medical quality grader. 
-    Assess whether the following retrieved document is clinically relevant to the user query.
-    If the document contains information that can help answer the query, score 'yes'.
+    Assess whether the following retrieved document is clinically relevant to the patient's condition and the query.
+    
+    If the document contains information that can help answer the query or address the clinical condition, score 'yes'.
     Otherwise, score 'no'.
     
-    User Query: {query}
-    Document: {context}
+    Clinical Context & Query: 
+    {clinical_query}
     
-    Output ONLY JSON: {{"binary_score": "yes" or "no"}}
+    Document Content:
+    {context}
     """
     prompt = ChatPromptTemplate.from_template(system_prompt)
     chain = prompt | llm 
@@ -50,18 +61,20 @@ def retrieval_grader_service(state: GraphState):
     # Normal for döngüsü ile tek tek dökümanları değerlendir
     for doc in docs:
         try:
-            # ainvoke yerine invoke kullanıyoruz
-            res: Grade = chain.invoke({"query": query, "context": doc.content})
+            # Sadece clinical_query ve context yolluyoruz
+            res: Grade = chain.invoke({"clinical_query": clinical_query, "context": doc.content})
             
             if res.binary_score.lower() == "yes":
                 relevant_docs.append(doc)
         except Exception as e:
-            citation = doc.metadata.citation_id if hasattr(doc, 'metadata') else 'Unknown'
+            # Güvenli loglama
+            citation = doc.metadata.citation_id if hasattr(doc, 'metadata') and hasattr(doc.metadata, 'citation_id') else 'Unknown'
             logger.error(f"Error grading doc {citation}: {e}")
 
     if len(relevant_docs) > 0:
-        logger.info(f"✅ {len(relevant_docs)} documents passed the grade. Proceeding to Adaptive Fusion.")
+        logger.info(f"✅ {len(relevant_docs)} documents passed the grade. Proceeding to Diagnostic Agent.")
         return {
+            # 4. ASIL TEMİZ LİSTEYİ OLUŞTURUYORUZ (Başhekim buna bakacak)
             "final_retrieved_docs": relevant_docs
         }
     else:

@@ -9,7 +9,7 @@ def adaptive_fusion_service(state: GraphState):
 
     lab_results = state.get("lab_analysis_results", {})
     image_results = state.get("image_analysis_results", {})
-    retrieved_docs = state.get("final_retrieved_docs", [])
+    
 
     # --- YENİ EKLENEN: HASTANIN KLİNİK BAĞLAMI ---
     # Final LLM bu rapora bakarak kiminle konuştuğunu bilecek
@@ -24,7 +24,6 @@ def adaptive_fusion_service(state: GraphState):
         },
         "Lab_Anomalies": [],
         "Image_Anomalies": [],
-        "Literature_Support": "",
         "Total_Anomaly_Count": 0
     }
 
@@ -56,19 +55,6 @@ def adaptive_fusion_service(state: GraphState):
 
     fusion_report["Total_Anomaly_Count"] = len(fusion_report["Lab_Anomalies"]) + len(fusion_report["Image_Anomalies"])
 
-    # ==========================================
-    # 3. TIBBİ LİTERATÜRÜ (RAG) EKLE
-    # ==========================================
-    if retrieved_docs:
-        doc_texts = []
-        for i, doc in enumerate(retrieved_docs):
-            # GÜVENLİK YAMASI: Chunk objesi .page_content, .text veya .content kullanıyor olabilir
-            content = getattr(doc, 'page_content', getattr(doc, 'text', getattr(doc, 'content', str(doc))))
-            doc_texts.append(f"[Source {i+1}]: {content}")
-            
-        fusion_report["Literature_Support"] = "\n\n".join(doc_texts)
-    else:
-        fusion_report["Literature_Support"] = "No specific medical literature found for this case."
 
     print(f"✅ Veri Sentezi Tamam! Toplam Anormallik: {fusion_report['Total_Anomaly_Count']}")
     return {"fused_clinical_context": fusion_report}
