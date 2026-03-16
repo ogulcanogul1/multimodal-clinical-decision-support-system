@@ -20,11 +20,11 @@ def parser_dynamic_router(state: GraphState) -> List[str]:
     """
     active_outputs = [] 
     
-    if state.get("image_path"):
+    if state.get("image_url"):
         active_outputs.append(NodeNames.CNN_CONTROL.value)
     
     # PDF veya Raw Text varsa Lab dalını başlat
-    if state.get("lab_results") or state.get("pdf_path") or state.get("raw_document_text"):
+    if state.get("document_url") or state.get("pdf_path") or state.get("raw_document_text"):
         active_outputs.append(NodeNames.PDF_EXTRACT.value)
         
     # EĞER SADECE METİN (SOHBET) GELDİYSE:

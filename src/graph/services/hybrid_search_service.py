@@ -11,6 +11,7 @@ def hybrid_search_service(state: GraphState):
     Optimizer'dan gelen 'vector_store_query'yi kullanarak 
     Pinecone üzerinde Hybrid (Vector + Keyword) arama yapar.
     """
+    print('*' * 50)
     logger.info("--- 📚 HYBRID SEARCH STARTING ---")
         
     opt_queries = state.get("optimized_queries", {})
@@ -29,6 +30,9 @@ def hybrid_search_service(state: GraphState):
     try:
         docs: List[Chunk] = vectorstore.get_final_context(vector_query, top_k=5)
         logger.info(f"✅ Retrieved {len(docs)} documents from Pinecone.")
+        print(f"""
+retrieved_docs : {docs}
+""")
         return {"retrieved_docs": docs}
     except Exception as e:
         logger.error(f"❌ Pinecone Search Error: {e}")

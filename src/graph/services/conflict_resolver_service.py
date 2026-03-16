@@ -6,6 +6,8 @@ def conflict_resolver_service(state: GraphState):
     Diagnostic Agent'ın (Başhekim) raporu düzeltebilmesi için yönlendirici
     bir bağlam (resolution_guidance) oluşturur ve akışı geri gönderir.
     """
+    print('*' * 50)
+
     print("\n🔄 [CONFLICT RESOLVER] Çelişki tespit edildi! Başhekim (Diagnostic Agent) için düzeltme talimatı hazırlanıyor...")
     
     # 1. State'ten Denetçi Geri Bildirimini ve Deneme Sayısını Al
@@ -43,6 +45,11 @@ def conflict_resolver_service(state: GraphState):
     print(f"   -> Düzeltme talimatı hazırlandı. (Deneme: {retry_count + 1})")
     print("   -> Akış yeniden 'diagnostic_agent' düğümüne yönlendiriliyor...")
 
+    print(f"""
+resolution_guidance : {resolution_guidance}
+          
+conflict_retry_count : {retry_count + 1}
+""")
     return {
         "resolution_guidance": resolution_guidance,
         "conflict_retry_count": retry_count + 1

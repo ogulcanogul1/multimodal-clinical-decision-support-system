@@ -35,14 +35,15 @@ public class DocumentAnalysisService {
         Consultation consultation = consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new RuntimeException("Muayene bulunamadı: " + consultationId));
 
-        String savedDocumentUrl = saveFileLocally(file);
+        // Dosyayı diske kaydet ve SADECE DOSYA ADINI (UUID.pdf) al
+        String savedDocumentName = saveFileLocally(file);
 
         // Not: Entity'de documentType'ı String yaptıysan .name() ile çevirebilirsin,
         // Enum yaptıysan direkt verebilirsin. Burada Enum varsayarak yazıyorum.
         DocumentAnalysis analysis = DocumentAnalysis.builder()
                 .consultation(consultation)
-                .documentUrl(savedDocumentUrl)
-                .documentType(documentType.name()) // Entity'de String tanımlı olduğu için .name() kullandık
+                .documentUrl(savedDocumentName) // Veritabanına sadece isim kaydediliyor!
+                .documentType(documentType.name())
                 .build();
 
         return mapToResponse(documentAnalysisRepository.save(analysis));
@@ -92,9 +93,11 @@ public class DocumentAnalysisService {
             String newFileName = UUID.randomUUID().toString() + extension;
             Path filePath = uploadPath.resolve(newFileName);
 
+            // Dosyayı fiziksel olarak application.yml'deki adrese (D:/...) yaz
             Files.copy(file.getInputStream(), filePath);
 
-            return filePath.toString().replace("\\", "/");
+            // MİMARİ DÜZELTME: Geriye tam yolu değil, sadece "uuid.pdf" dönüyoruz.
+            return newFileName;
         } catch (Exception e) {
             throw new RuntimeException("Belge kaydedilirken hata oluştu: " + e.getMessage());
         }

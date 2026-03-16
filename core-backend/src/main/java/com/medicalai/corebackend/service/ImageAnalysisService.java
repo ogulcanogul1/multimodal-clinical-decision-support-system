@@ -27,7 +27,7 @@ public class ImageAnalysisService {
     private final ImageAnalysisRepository imageAnalysisRepository;
     private final ConsultationRepository consultationRepository;
 
-    // Görüntülerin kaydedileceği lokal dizin (İleride AWS S3'e taşınabilir)
+    // Görüntülerin kaydedileceği lokal dizin (application.yml'den geliyor)
     @Value("${app.storage.image-dir}")
     private String UPLOAD_IMAGE_DIR;
 
@@ -41,12 +41,12 @@ public class ImageAnalysisService {
         Consultation consultation = consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new RuntimeException("Muayene bulunamadı: " + consultationId));
 
-        // Dosyayı diske kaydet ve yolunu al
-        String savedImageUrl = saveFileLocally(file);
+        // Dosyayı diske kaydet ve SADECE DOSYA ADINI (UUID.png) al
+        String savedImageName = saveFileLocally(file);
 
         ImageAnalysis analysis = ImageAnalysis.builder()
                 .consultation(consultation)
-                .originalImageUrl(savedImageUrl) // Artık Request'ten değil, kaydettiğimiz yerden alıyoruz
+                .originalImageUrl(savedImageName) // Veritabanına sadece isim kaydediliyor!
                 .analysisType(analysisType)
                 .build();
 
@@ -63,6 +63,8 @@ public class ImageAnalysisService {
 
         analysis.setAiPrediction(resultRequest.aiPrediction());
         analysis.setConfidenceScore(resultRequest.confidenceScore());
+
+        // Eğer Python Heatmap ürettiyse, onun da sadece ismini (heatmap_uuid.png) veritabanına kaydederiz
         analysis.setHeatmapUrl(resultRequest.heatmapUrl());
 
         return mapToResponse(imageAnalysisRepository.save(analysis));
@@ -112,11 +114,11 @@ public class ImageAnalysisService {
             String newFileName = UUID.randomUUID().toString() + extension;
             Path filePath = uploadPath.resolve(newFileName);
 
-            // Dosyayı diske yaz
+            // Dosyayı diske yaz (Fiziksel olarak application.yml'deki adrese gider)
             Files.copy(file.getInputStream(), filePath);
 
-            // Klasör yolunu string olarak dön (Örn: uploads/images/123e4567-e89b...jpg)
-            return filePath.toString().replace("\\", "/");
+            // MİMARİ DÜZELTME: Geriye klasör yolunu değil, SADECE DOSYA ADINI dönüyoruz
+            return newFileName;
 
         } catch (Exception e) {
             throw new RuntimeException("Dosya kaydedilirken hata oluştu: " + e.getMessage());

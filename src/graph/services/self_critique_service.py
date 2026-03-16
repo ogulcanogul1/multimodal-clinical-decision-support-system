@@ -5,6 +5,8 @@ from src.graph.model.model_abstraction import ActiveLLMFactory
 from src.schemas.node_schemas.self_critique import CritiqueOutput
 
 def self_critique_service(state: GraphState):
+
+    print('*' * 50)
     print("\n🕵️‍♂️ [SELF-CRITIQUE] Tıbbi Denetçi raporu güvenlik testinden geçiriyor...")
     
     fused_context = state.get("fused_clinical_context", {})
@@ -64,6 +66,10 @@ If the report is 100% safe, accurate, and matches the facts and literature, set 
     # --- MİMARİ KÖPRÜ (ÖLÜ KODLAR TEMİZLENDİ) ---
     if status == "verified":
         print("   ✅ Rapor ONAYLANDI (Verified).")
+        print(f"""
+critique_status : {status}
+critique_feedback : {feedback}
+""")
     else:
         print(f"   🚨 Rapor REDDEDİLDİ (Conflict)! Hata: {feedback}")
 

@@ -7,6 +7,8 @@ from src.graph.state import GraphState
 
 def mlp_control_service(state: GraphState):
     """Tahlil raporunu ayrıştırır ve veritabanından gelen klinik bağlamla birleştirir."""
+    print('*' * 50)
+    
     print("\n🩸 [MLP CONTROL] Laboratuvar verileri analiz ediliyor...")
     
     raw_lab_text = state.get("raw_document_text", "")
@@ -75,6 +77,12 @@ def mlp_control_service(state: GraphState):
         if extracted_data.parameters:
             first_param = extracted_data.parameters[0]
             print(f"🔍 Örnek: {first_param.name} = {first_param.value} {first_param.unit} (Normal: {first_param.ref_min}-{first_param.ref_max})")
+        
+
+        print(f""" lab_data : {extracted_data}""")
+
+        print("\n🩸 [MLP CONTROL] SON")
+
 
         return {
             "lab_data": extracted_data, 

@@ -34,6 +34,8 @@ def predict_safely(model, raw_df):
 
 
 def lab_analyzer_service(state: GraphState):
+    print('*' * 50)
+
     print("\n🔬 [LAB ANALYZER] Lab data is being sent to Expert Models...")
     
     lab_report: LabReport = state.get("lab_data")
@@ -44,7 +46,12 @@ def lab_analyzer_service(state: GraphState):
     extracted_dict = {param.name.lower().strip(): param.value for param in lab_report.parameters}
     
     # --- GÜVENLİ VERİ ÇEKİMİ (STATE veya LAB_REPORT) ---
-    age = state.get("patient_age") or getattr(lab_report, 'patient_age', 35.0) or 35.0
+    # Java'dan veya LLM'den gelen yaş verisini kesin olarak float tipine dönüştürüyoruz.
+    try:
+        raw_age = state.get("patient_age") or getattr(lab_report, 'patient_age', 35.0) or 35.0
+        age = float(raw_age)
+    except (ValueError, TypeError):
+        age = 35.0 # Eğer çevrilemezse (örn: saçma sapan bir string gelirse) varsayılan yaş
     
     # Cinsiyet Parse Etme (MALE, FEMALE, None)
     raw_gender = str(state.get("patient_gender") or getattr(lab_report, 'patient_gender', "MALE")).strip().upper()
@@ -102,7 +109,7 @@ def lab_analyzer_service(state: GraphState):
         }]),
         
         "Cardiovascular": pd.DataFrame([{
-            'age': age * 365.25, 
+            'age': age * 365.25, # Yaş artık kesin float olduğu için buradaki çarpma işlemi çökmeyecek
             'gender': cardio_gender,
             'height': get_val('height', 'boy'),
             'weight': get_val('weight', 'kilo', 'ağırlık'),
@@ -146,11 +153,11 @@ def lab_analyzer_service(state: GraphState):
                 pred_class = int(pred)
                 
                 if disease_name in ["Kidney_CKD", "Liver"]:
-                    risk_ratio = prob[0]
+                    risk_ratio = float(prob[0]) # NumPy tiplerinden kurtulmak için kesin float
                 elif disease_name == "Anemia":
-                    risk_ratio = prob[pred_class]
+                    risk_ratio = float(prob[pred_class])
                 else:
-                    risk_ratio = prob[1]
+                    risk_ratio = float(prob[1])
                 
                 message = DIAGNOSIS_MAPPING[disease_name][pred_class]
                 analysis_results[f"{disease_name}_Report"] = f"{message} (Risk: {risk_ratio*100:.1f}%)"
@@ -174,6 +181,16 @@ def lab_analyzer_service(state: GraphState):
 
     print("✅ All 5 Expert Models executed successfully and results synthesized!")
     
+    print(f"""
+lab_analysis_results : {analysis_results}
+
+lab_prediction : {primary_prediction}
+
+lab_confidence : {float(max_risk_score)}
+
+feature_importance : {feature_importance_dict}
+""")
+
     # JAVA'NIN BEKLEDİĞİ TÜM STATE VERİLERİ DÖNÜLÜYOR
     return {
         "lab_analysis_results": analysis_results,

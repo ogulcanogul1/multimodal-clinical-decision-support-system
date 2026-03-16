@@ -8,6 +8,8 @@ def diagnostic_agent_service(state: GraphState):
     Evaluates available modalities, detects cross-modality correlations, 
     and points out diagnostic limitations if a modality is missing.
     """
+    print('*' * 50)
+
     print("\n👨‍⚕️ [DIAGNOSTIC AGENT] The Chief Medical Officer (LLM) is writing the final report...")
 
     retry_count = state.get("conflict_retry_count", 0)
@@ -113,6 +115,9 @@ Please format your final report strictly using the following structure:
         
         final_report = response.content if hasattr(response, 'content') else str(response)
         
+        print(f"""
+final_report : {final_report}
+""")
     except Exception as e:
         print(f"❌ [DIAGNOSTIC AGENT] LLM Error: {str(e)}")
         final_report = "Due to system overload, the medical report could not be generated."

@@ -56,7 +56,8 @@ def preprocess_image(image_path):
 def run_inference(model_path, tensor, dev, class_mapping=None):
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model not found: {model_path}")
-        
+
+
     # Not: Gerçek canlı ortamda (production) modelleri her seferinde diskten yüklemek 
     # yavaştır. İleride bunları global bir sözlükte (cache) önceden yüklenmiş tutabilirsin.
     model = torch.load(model_path, map_location=dev)
@@ -84,6 +85,9 @@ def image_analyzer_service(state: GraphState):
     modality = state.get("modality", "OTHER")
     is_valid = state.get("is_valid", False)
     
+    print('*' * 50)
+
+    print("image_analyzer_service".upper())
     # State'deki değişken adı image_url olarak ayarlanmıştı, oradan çekiyoruz
     image_path = state.get("image_url") 
     
@@ -173,8 +177,19 @@ def image_analyzer_service(state: GraphState):
             except Exception as e:
                 analysis_results[model_name] = f"Error: {str(e)}"
 
+    
+    print(f"""
+image_analysis_results : {analysis_results}
+
+image_prediction : {primary_prediction}       
+
+image_confidence : {float(primary_confidence)}
+""")
+    
     print("✅ Image analysis complete!")
     
+
+
     # JAVA'NIN BEKLEDİĞİ STATE DÖNÜLÜYOR
     return {
         "image_analysis_results": analysis_results, # LLM'in okuyacağı detaylı rapor

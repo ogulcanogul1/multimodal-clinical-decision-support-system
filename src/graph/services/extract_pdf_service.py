@@ -7,6 +7,7 @@ def extract_text_with_pymupdf(pdf_path: str) -> str:
     Belirtilen PDF dosyasını okur ve metinleri çıkarır.
     'sort=True' parametresi tahlil tablolarının hizasını korumak için hayatidir.
     """
+    print('*' * 50)
     text = ""
     try:
         # PDF dosyasını aç (Hızlı C++ motoru devreye girer)
@@ -26,17 +27,22 @@ def extract_text_with_pymupdf(pdf_path: str) -> str:
         print(f"❌ [PDF PARSER] Dosya okuma hatası: {str(e)}")
         return ""
     
-def document_loader_service(state:GraphState):
-     # State'ten dosya yolunu al (Örn: "data/uploads/hasta_tahlil.pdf")
-    # Bunu GraphState sınıfına 'pdf_path' olarak eklemelisin.
-    pdf_path = state.get("pdf_path")
+def document_loader_service(state: GraphState):
+    # State'ten dosya yolunu al (main.py'den artık absolute/tam yol geliyor)
+    pdf_path = state.get("document_url")
+    
+    # 1. DÜZELTME: None gelse bile sistemin çökmemesi için f-string kullandık
+    print(f"pdf_path : {pdf_path}")
     
     if not pdf_path or not os.path.exists(pdf_path):
-        print("   ⚠️ Geçerli bir PDF yolu bulunamadı.")
+        print("   ⚠️ Geçerli bir PDF yolu bulunamadı veya dosya yok.")
         return {"raw_document_text": ""}
 
     # PyMuPDF ile metni çıkar
     extracted_text = extract_text_with_pymupdf(pdf_path)
+
+    # 2. DÜZELTME: int olan uzunluğu (len), f-string sayesinde güvenle yazdırıyoruz
+    print(f"extracted_text length test: {len(extracted_text)}")
     
     if extracted_text:
         print("   ✅ PDF başarıyla okundu ve metin çıkarıldı.")

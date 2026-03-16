@@ -11,9 +11,12 @@ def encode_image(image_path: str):
     
 def image_gatekeeper_service(state: GraphState):
     """Görüntüyü analiz eder ve Pydantic değişkenlerini prompt ile eşleştirir."""
-    
-    image_path = state["image_path"]
+    print('*' * 50)
 
+    print("image_gatekeeper_service".upper())
+    image_path = state["image_url"]
+
+    print("image_path : " + image_path)
     if image_path is None:
         return 
     
@@ -36,9 +39,12 @@ def image_gatekeeper_service(state: GraphState):
         ]
     )
     
+
     # Pydantic objesi olarak yanıtı alıyoruz
     analysis_result: ImageAnalysis = vlm.invoke([message])
     
+    print("IMAGE GATEKEEPER SERVICE SON")
+
     return {
         "modality": analysis_result.modality,
         "is_valid": analysis_result.is_high_quality,

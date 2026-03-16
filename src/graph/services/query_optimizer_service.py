@@ -6,6 +6,7 @@ from src import logger
 import json
 
 def query_optimizer_service(state: GraphState):
+    print('*' * 50)
     logger.info("--- 🔍 QUERY OPTIMIZER STARTING ---")
     
     # 1. State'ten Yeni Gelen Tüm Zengin Verileri Çekiyoruz
@@ -77,6 +78,11 @@ def query_optimizer_service(state: GraphState):
         
         logger.info("✅ Optimization successful. Context-aware queries generated.")
         
+        print(f"""
+vector_store_query : {optimized_data.vector_store_query}
+web_search_queries : {optimized_data.web_search_queries}
+""")
+
         return {
             "optimized_queries": {
                 "vector_store_query": optimized_data.vector_store_query,

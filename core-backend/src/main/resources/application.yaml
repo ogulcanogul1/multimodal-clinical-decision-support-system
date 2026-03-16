@@ -27,5 +27,6 @@ spring:
 
 app:
   storage:
-    image-dir: "../data/resource_db/images"
-    document-dir: "../data/resource_db/documents"
+    image-dir: "D:/Python/projects/medical_system/data/resource_db/images"
+    document-dir: "D:/Python/projects/medical_system/data/resource_db/documents"
+

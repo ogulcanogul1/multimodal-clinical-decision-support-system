@@ -5,6 +5,8 @@ def adaptive_fusion_service(state: GraphState):
     Sadece verileri toplar, temizler ve Final LLM için yapılandırılmış bir bağlam (Context) oluşturur.
     Tıbbi yorumlamayı ve çapraz bağlantıları (Cross-Modality) tamamen Final LLM'e bırakır.
     """
+    print('*' * 50)
+
     print("\n🧬 [ADAPTIVE FUSION] Veriler toplanıyor ve LLM için sentezleniyor...")
 
     lab_results = state.get("lab_analysis_results", {})
@@ -55,6 +57,6 @@ def adaptive_fusion_service(state: GraphState):
 
     fusion_report["Total_Anomaly_Count"] = len(fusion_report["Lab_Anomalies"]) + len(fusion_report["Image_Anomalies"])
 
-
+    
     print(f"✅ Veri Sentezi Tamam! Toplam Anormallik: {fusion_report['Total_Anomaly_Count']}")
     return {"fused_clinical_context": fusion_report}

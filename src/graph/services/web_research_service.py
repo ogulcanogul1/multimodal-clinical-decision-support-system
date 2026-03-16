@@ -13,6 +13,8 @@ def web_research_service(state: GraphState):
     Optimizer sorgularını sırayla aratır, sonuçları anında Reranker ile 
     puanlar ve sadece en iyi 3 chunk'ı döner.
     """
+    print('*' * 50)
+
     logger.info("--- 🌐 WEB RESEARCH & RERANK STARTING ---")
     
     try:

@@ -11,6 +11,7 @@ def retrieval_grader_service(state: GraphState):
     Eğer geçerli döküman yoksa sayacı artırır. Maksimum denemeye ulaşılırsa 
     literatür taramasını sonlandırıp elindeki boş listeyle Başhekime (Diagnostic Agent) geçer.
     """
+    print('*' * 50)
     retry_count = state.get("retrieval_retry_count", 0)
     MAX_RETRIES = 2 # Toplam 3 deneme hakkı (0, 1, 2)
     
