@@ -1,7 +1,9 @@
 import base64
 from src.graph.state import GraphState
 from langchain_core.messages import HumanMessage
-from src.graph.model.llm_factory_ollama import OllamaLLMFactory
+from src.graph.model.model_abstraction import ActiveLLMFactory
+from src.graph.model.OpenAI_llm_factory import OpenAILLMFactory
+
 from src.schemas.node_schemas.gate_keeper_schemas import ImageAnalysis
 
 def encode_image(image_path: str):
@@ -20,7 +22,7 @@ def image_gatekeeper_service(state: GraphState):
     if image_path is None:
         return 
     
-    vlm = OllamaLLMFactory.image_gatekeeper_llm()
+    vlm = OpenAILLMFactory.image_gatekeeper_llm()
     base64_image = encode_image(image_path)
     
     instruction = """You are a professional medical image classification expert.

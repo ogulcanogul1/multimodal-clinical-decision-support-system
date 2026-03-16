@@ -35,12 +35,12 @@ def parser_dynamic_router(state: GraphState) -> List[str]:
     return active_outputs
 
 def image_gate_logic(state: GraphState) -> Literal["valid", "invalid"]:
-    if state.get("is_image_medical"): 
+    if state.get("is_valid"): 
         return "valid"
     return "invalid"
 
 def lab_gate_logic(state: GraphState) -> Literal["valid", "invalid"]:
-    if state.get("lab_results"):
+    if state.get("lab_is_valid"):
         return "valid"
     return "invalid"
 

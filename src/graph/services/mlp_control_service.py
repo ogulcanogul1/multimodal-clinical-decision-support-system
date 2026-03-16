@@ -57,9 +57,9 @@ def mlp_control_service(state: GraphState):
         # LLM sadece tahlil değerlerini ve raporun geçerli olup olmadığını bulur
         extracted_data: LabReport = extractor_llm.invoke([message])
         
-        if not getattr(extracted_data, 'is_valid_report', False):
-            print("⚠️ [UYARI] Yüklenen belge geçerli bir tahlil raporu değil!")
-            return {"lab_data": None, "is_valid": False}
+        # if not getattr(extracted_data, 'is_valid_report', False):
+        #     print("⚠️ [UYARI] Yüklenen belge geçerli bir tahlil raporu değil!")
+        #     return {"lab_data": None, "is_valid": False}
             
         # 3. KESİN VERİLERİ ENJEKTE EDİYORUZ (Ground Truth Injection)
         # LLM'in çıkardığı parametrelere, kendi veritabanımızdaki %100 doğru yaş ve cinsiyeti ekliyoruz.

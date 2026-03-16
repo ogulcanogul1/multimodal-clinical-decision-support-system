@@ -1,6 +1,8 @@
 import os
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.models as models
 from torchvision import transforms
 from PIL import Image
 from src.graph.state import GraphState
@@ -11,29 +13,32 @@ from src.graph.state import GraphState
 CNN_CONFIG = {
     "BRAIN": {
         "Brain_Tumor_Specialist": {
-            "path": "data/cnn/best_brain_model.pth", 
-            "classes": {0: "Glioma Tumor", 1: "Meningioma Tumor", 2: "Normal (No Tumor)", 3: "Pituitary Tumor"}
+            "path": "data/cnn/brain/models/best_brain_model.pth", 
+            "classes": {0: "Glioma Tumor", 1: "Meningioma Tumor", 2: "Normal (No Tumor)", 3: "Pituitary Tumor"},
+            "arch": "resnet50"
         }
     },
     "EYE": {
         "Eye_Disease_Specialist": {
-            "path": "data/cnn/best_eye_model.pth", 
-            "classes": {0: "Cataract", 1: "Diabetic Retinopathy", 2: "Glaucoma", 3: "Normal"}
+            "path": "data/cnn/eye/models/best_eye_disease_model.pth", 
+            "classes": {0: "Cataract", 1: "Diabetic Retinopathy", 2: "Glaucoma", 3: "Normal"},
+            "arch": "resnet50"
         }
     },
     "LUNG": {
         "Gatekeeper": {
             "path": "data/cnn/best_lung_gatekeeper_model.pth",
-            "classes": {0: "Normal", 1: "Abnormal (Disease Detected)"}
+            "classes": {0: "Normal", 1: "Abnormal (Disease Detected)"},
+            "arch": "densenet121"
         },
         "Specialists": {
-            "Atelectasis": {"path": "data/cnn/best_Atelectasis_model.pth"},
-            "Cardiomegaly": {"path": "data/cnn/best_Cardiomegaly_model.pth"},
-            "Consolidation": {"path": "data/cnn/best_Consolidation_model.pth"},
-            "Edema": {"path": "data/cnn/best_Edema_model.pth"},
-            "Effusion": {"path": "data/cnn/best_Effusion_model.pth"},
-            "Pneumonia": {"path": "data/cnn/best_Pneumonia_model.pth"},
-            "Pneumothorax": {"path": "data/cnn/best_Pneumothorax_model.pth"}
+            "Atelectasis": {"path": "data/cnn/best_Atelectasis_model.pth", "arch": "densenet121"},
+            "Cardiomegaly": {"path": "data/cnn/best_Cardiomegaly_model.pth", "arch": "densenet121"},
+            "Consolidation": {"path": "data/cnn/best_Consolidation_model.pth", "arch": "densenet121"},
+            "Edema": {"path": "data/cnn/best_Edema_model.pth", "arch": "densenet121"},
+            "Effusion": {"path": "data/cnn/best_Effusion_model.pth", "arch": "densenet121"},
+            "Pneumonia": {"path": "data/cnn/best_Pneumonia_model.pth", "arch": "densenet121"},
+            "Pneumothorax": {"path": "data/cnn/best_Pneumothorax_model.pth", "arch": "densenet121"}
         }
     }
 }
@@ -53,14 +58,49 @@ def preprocess_image(image_path):
 # ==========================================
 # 3. YARDIMCI FONKSİYON (INFERENCE)
 # ==========================================
-def run_inference(model_path, tensor, dev, class_mapping=None):
+def run_inference(model_path, tensor, dev, arch="resnet50", class_mapping=None):
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Model not found: {model_path}")
 
+    # Sınıf sayısını bul (Eğer verilmemişse default 2'dir: Positive/Negative)
+    num_classes = len(class_mapping) if class_mapping else 2
 
-    # Not: Gerçek canlı ortamda (production) modelleri her seferinde diskten yüklemek 
-    # yavaştır. İleride bunları global bir sözlükte (cache) önceden yüklenmiş tutabilirsin.
-    model = torch.load(model_path, map_location=dev)
+    # 1. Önce ağırlıkları (Sözlüğü) yüklüyoruz ki içine bakıp iskeleti ona göre kuralım
+    state_dict = torch.load(model_path, map_location=dev)
+
+    # --- 2. İSKELETİ (MİMARİYİ) OLUŞTUR ---
+    if arch == "resnet50":
+        # Uyarıları gizlemek için pretrained=False yerine weights=None kullanıyoruz
+        model = models.resnet50(weights=None) 
+        num_ftrs = model.fc.in_features
+        
+        # Eğitilen modelin son katmanının yapısına bakıyoruz (Dropout var mı?)
+        if "fc.1.weight" in state_dict:
+            model.fc = nn.Sequential(
+                nn.Dropout(0.5),
+                nn.Linear(num_ftrs, num_classes)
+            )
+        else:
+            model.fc = nn.Linear(num_ftrs, num_classes)
+            
+    elif arch == "densenet121":
+        model = models.densenet121(weights=None)
+        num_ftrs = model.classifier.in_features
+        
+        # Eğitilen modelin son katmanının yapısına bakıyoruz (Dropout var mı?)
+        if "classifier.1.weight" in state_dict:
+            model.classifier = nn.Sequential(
+                nn.Dropout(0.5),
+                nn.Linear(num_ftrs, num_classes)
+            )
+        else:
+            model.classifier = nn.Linear(num_ftrs, num_classes)
+    else:
+        raise ValueError(f"Bilinmeyen mimari: {arch}")
+
+    # --- 3. AĞIRLIKLARI İSKELETE GİYDİR VE ÇALIŞTIR ---
+    model.load_state_dict(state_dict)
+    model = model.to(dev)
     model.eval()
     
     with torch.no_grad():
@@ -86,9 +126,8 @@ def image_analyzer_service(state: GraphState):
     is_valid = state.get("is_valid", False)
     
     print('*' * 50)
+    print("IMAGE_ANALYZER_SERVICE")
 
-    print("image_analyzer_service".upper())
-    # State'deki değişken adı image_url olarak ayarlanmıştı, oradan çekiyoruz
     image_path = state.get("image_url") 
     
     if not is_valid or modality == "OTHER" or modality not in CNN_CONFIG or not image_path:
@@ -105,8 +144,6 @@ def image_analyzer_service(state: GraphState):
     input_tensor = input_tensor.to(device)
     
     analysis_results = {}
-    
-    # --- JAVA'YA GİDECEK OLAN ANA ÇIKTILAR ---
     primary_prediction = "Unknown"
     primary_confidence = 0.0
 
@@ -117,19 +154,22 @@ def image_analyzer_service(state: GraphState):
         gatekeeper_config = CNN_CONFIG["LUNG"]["Gatekeeper"]
         try:
             print("   -> Running Lung Gatekeeper...")
-            pred_label, conf_val = run_inference(gatekeeper_config["path"], input_tensor, device, gatekeeper_config["classes"])
+            pred_label, conf_val = run_inference(
+                gatekeeper_config["path"], 
+                input_tensor, 
+                device, 
+                arch=gatekeeper_config["arch"], 
+                class_mapping=gatekeeper_config["classes"]
+            )
             
             if pred_label == "Normal":
                 print(f"   🟢 Gatekeeper Result: Normal (Confidence: {conf_val:.1f}%). Skipping specialists.")
                 analysis_results["Lung_General_Status"] = f"Normal (Confidence: {conf_val:.1f}%)"
-                
                 primary_prediction = "Normal Lungs"
                 primary_confidence = conf_val
             else:
                 print(f"   🔴 Gatekeeper Result: Abnormal (Confidence: {conf_val:.1f}%). Running 7 Specialists...")
                 analysis_results["Lung_General_Status"] = f"Abnormal (Confidence: {conf_val:.1f}%)"
-                
-                # Başlangıçta anormallik var ama ne olduğu belli değil
                 primary_prediction = "Abnormal Lungs (Scanning...)" 
                 primary_confidence = conf_val
                 
@@ -139,13 +179,17 @@ def image_analyzer_service(state: GraphState):
                 
                 for spec_name, spec_config in specialists.items():
                     try:
-                        spec_pred, spec_conf = run_inference(spec_config["path"], input_tensor, device)
+                        spec_pred, spec_conf = run_inference(
+                            spec_config["path"], 
+                            input_tensor, 
+                            device, 
+                            arch=spec_config["arch"]
+                        )
                         if spec_pred == "Positive":
                             analysis_results[f"Finding_{spec_name}"] = f"Detected (Confidence: {spec_conf:.1f}%)"
                             detected_diseases.append(spec_name)
                             print(f"      🚨 {spec_name}: Detected ({spec_conf:.1f}%)")
                             
-                            # En yüksek olasılıklı hastalığı "Ana Teşhis" olarak belirliyoruz
                             if spec_conf > highest_spec_conf:
                                 highest_spec_conf = spec_conf
                                 primary_prediction = spec_name 
@@ -153,7 +197,6 @@ def image_analyzer_service(state: GraphState):
                     except Exception as e:
                         analysis_results[f"Finding_{spec_name}"] = f"Error: {str(e)}"
                 
-                # Eğer birden fazla hastalık varsa Java'ya ipucu veriyoruz
                 if len(detected_diseases) > 1:
                     primary_prediction += f" (+{len(detected_diseases)-1} others)"
                     
@@ -163,36 +206,37 @@ def image_analyzer_service(state: GraphState):
     # ==============================================
     # 🧠 BEYİN VE GÖZ İÇİN STANDART MANTIK
     # ==============================================
-    else:
+    elif modality in ["BRAIN", "EYE"]:
         models_to_run = CNN_CONFIG[modality]
         for model_name, config in models_to_run.items():
             try:
-                pred_label, conf_val = run_inference(config["path"], input_tensor, device, config["classes"])
+                pred_label, conf_val = run_inference(
+                    config["path"], 
+                    input_tensor, 
+                    device, 
+                    arch=config["arch"], 
+                    class_mapping=config["classes"]
+                )
+                
+                # SÖZLÜĞE KAYDET!
                 analysis_results[model_name] = f"{pred_label} (Confidence: {conf_val:.1f}%)"
                 print(f"   -> {model_name}: {pred_label} ({conf_val:.1f}%)")
                 
-                # Genelde tek bir uzman model çalıştığı için sonuç direkt ana tahmindir
                 primary_prediction = pred_label
                 primary_confidence = conf_val
             except Exception as e:
                 analysis_results[model_name] = f"Error: {str(e)}"
+                print(f"   ❌ ERROR: {e}")
 
-    
-    print(f"""
-image_analysis_results : {analysis_results}
-
-image_prediction : {primary_prediction}       
-
-image_confidence : {float(primary_confidence)}
-""")
-    
+    # --- DÖNGÜLER VE IF'LER BİTTİ. ŞİMDİ GÜVENLE YAZDIRABİLİRİZ ---
+    print(f"\nimage_analysis_results : {analysis_results}")
+    print(f"image_prediction : {primary_prediction}")       
+    print(f"image_confidence : {float(primary_confidence)}\n")
     print("✅ Image analysis complete!")
     
-
-
-    # JAVA'NIN BEKLEDİĞİ STATE DÖNÜLÜYOR
+    # JAVA'NIN VE DİĞER FONKSİYONLARIN BEKLEDİĞİ STATE DÖNÜLÜYOR
     return {
-        "image_analysis_results": analysis_results, # LLM'in okuyacağı detaylı rapor
-        "image_prediction": primary_prediction,     # Java'ya gidecek tekil özet tahmin
-        "image_confidence": float(primary_confidence) # Java'ya gidecek % oran
+        "image_analysis_results": analysis_results, 
+        "image_prediction": primary_prediction,     
+        "image_confidence": float(primary_confidence) 
     }

@@ -16,9 +16,11 @@ dependencies = [
     "mlflow>=3.9.0",
     "numpy>=1.26.0",
     "pandas>=2.2.0",
+    "pillow>=12.1.0",
     "pinecone>=5.0.0",
     "pydantic>=2.7.0",
     "pymupdf>=1.24.0",
+    "pytesseract>=0.3.13",
     "pytest>=9.0.2",
     "python-dotenv>=1.0.1",
     "rank-bm25>=0.2.2",
@@ -32,4 +34,5 @@ dependencies = [
     "torchvision>=0.17.0",
     "tqdm>=4.66.0",
     "transformers==4.47.1",
+    "xgboost>=3.2.0",
 ]

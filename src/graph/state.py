@@ -27,6 +27,7 @@ class GraphState(TypedDict):
     
     # --- RAG & RESEARCH INTELLIGENCE ---
     optimized_queries: Dict[str, Any] 
+    raw_document_text:Optional[str]
     retrieved_docs: Annotated[List[Chunk], operator.add] 
     final_retrieved_docs: Optional[List[Chunk]] 
     web_results: List[Dict[str, Any]]
@@ -38,8 +39,6 @@ class GraphState(TypedDict):
     # --- MULTIMODAL ANALİZ & XAI ---
     image_features: Optional[Any]     
     grad_cam_path: Optional[str]      
-    lab_features: Optional[Any]       
-    feature_importance: Dict[str, float] 
 
     # Image Gatekeeper
     modality: Optional[str]
@@ -49,12 +48,17 @@ class GraphState(TypedDict):
     # Burada modelin ürettiği metin ve skoru tutacağız
     image_prediction: Optional[str]
     image_confidence: Optional[float]
+    image_analysis_results:Optional[Dict] 
 
-    # Lab Gatekeeper
+    # Lab Gatekeeper & Lab Analyzer
     lab_data: Optional[LabReport]
     lab_is_valid: Optional[bool]
+
+    lab_analysis_results:Optional[Any]
     lab_prediction: Optional[str]
     lab_confidence: Optional[float]
+    feature_importance: Dict[str, float] 
+
 
     # Adaptive Fusion & Conflict
     fused_clinical_context: Optional[Dict]
