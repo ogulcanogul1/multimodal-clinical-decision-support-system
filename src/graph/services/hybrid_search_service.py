@@ -6,6 +6,14 @@ from src import logger
 from typing import List
 from src.schemas.chunk import Chunk
 
+
+try:
+    GLOBAL_VECTOR_STORE = PineconeVectorStore()
+except Exception as e:
+    logger.error(f"PineconeVectorStore baslatilamadi: {e}")
+    GLOBAL_VECTOR_STORE = None
+
+
 def hybrid_search_service(state: GraphState):
     """
     Optimizer'dan gelen 'vector_store_query'yi kullanarak 
@@ -15,9 +23,6 @@ def hybrid_search_service(state: GraphState):
     logger.info("--- 📚 HYBRID SEARCH STARTING ---")
         
     opt_queries = state.get("optimized_queries", {})
-    
-    # 1. Aramayı yapacak olan sorguyu alıyoruz.
-    # Optimizer bir şeyler ürettiyse onu kullan, yoksa doktorun yazdığı orjinal mesaja düş.
     vector_query = opt_queries.get("vector_store_query") or state.get("message_content") or state.get("query")
     
     if not vector_query:
@@ -25,14 +30,20 @@ def hybrid_search_service(state: GraphState):
         return {"retrieved_docs": []}
         
     logger.info(f"🔎 Pinecone Query: {vector_query}")
-    vectorstore = PineconeVectorStore()
     
+    # ❌ YANLIŞTI: vectorstore = PineconeVectorStore()
+    # ✅ DOĞRU: Hazır olan global nesneyi kullanıyoruz!
+    if not GLOBAL_VECTOR_STORE:
+        logger.error("Vector Store global nesnesi yuklenemedigi icin arama yapilamiyor.")
+        return {"retrieved_docs": []}
+        
     try:
-        docs: List[Chunk] = vectorstore.get_final_context(vector_query, top_k=5)
+        # Bu işlem artık saniyeler değil, milisaniyeler sürecek!
+        docs: List[Chunk] = GLOBAL_VECTOR_STORE.get_final_context(vector_query, top_k=5)
+        
         logger.info(f"✅ Retrieved {len(docs)} documents from Pinecone.")
-        print(f"""
-retrieved_docs : {docs}
-""")
+        print(f"\nretrieved_docs : {docs}\n")
+        
         return {"retrieved_docs": docs}
     except Exception as e:
         logger.error(f"❌ Pinecone Search Error: {e}")

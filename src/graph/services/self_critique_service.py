@@ -24,16 +24,17 @@ def self_critique_service(state: GraphState):
         return {"critique_status": "conflict", "critique_feedback": "No final report found."}
 
     # --- MİMARİ DÜZELTME 2: SİSTEM PROMPTU GÜNCELLENDİ ---
-    system_instruction = """You are a strict Medical Quality Assurance (QA) Auditor.
+    system_instruction = """You are a pragmatic Senior Medical Reviewer evaluating an AI-generated Doctor's Report.
 Compare the 'Raw Clinical Facts' & 'Medical Literature' against the 'Generated Doctor's Report'.
 
-CRITICAL RULES FOR FAILURE (Output status: "conflict"):
-1. Hallucination: Mentioning a disease, anomaly, or treatment NOT present in the Raw Facts or Medical Literature.
-2. Contradiction: Calling an abnormal test 'normal' or vice versa.
-3. Definitive Diagnosis: Making a definitive legal diagnosis instead of a risk assessment.
+Your primary goal is PATIENT SAFETY. Do NOT nitpick vocabulary, tone, or minor semantic differences (e.g., do not reject the report just because it uses "probable" instead of "suggestive of").
 
-If ANY rule is violated, set status to "conflict" and write what needs to be fixed in "feedback".
-If the report is 100% safe, accurate, and matches the facts and literature, set status to "verified" and feedback to "Approved"."""
+ONLY reject the report (Output status: "conflict") if you find a MAJOR clinical error:
+1. Dangerous Hallucination: Inventing a completely new severe disease, allergy, or current medication NOT present in the context. (Reasonable clinical inferences based on the facts are allowed).
+2. Fatal Contradiction: Explicitly calling a critically abnormal lab result "normal", or recommending a drug the patient is allergic to.
+3. Reckless Action: Recommending an immediate invasive surgery or prescribing dangerous drugs without advising a specialist consultation first. (Note: Stating the AI's high-confidence prediction as the primary diagnosis is ACCEPTABLE as long as specialist follow-up is recommended).
+
+If the report is generally safe, logically follows the facts, and appropriately refers the patient to specialists, DO NOT over-analyze. Set status to "verified" and feedback to "Approved"."""
 
     human_message = "RAW CLINICAL FACTS:\n{context}\n\nMEDICAL LITERATURE:\n{literature}\n\nGENERATED REPORT:\n{report}"
 

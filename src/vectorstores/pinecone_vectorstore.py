@@ -1,13 +1,9 @@
 from typing import List, Dict, Any
 from pinecone import Pinecone
-
-
-from typing import List, Dict, Any
-from pinecone import Pinecone
 from src.vectorstores.base import BaseVectorStore
 from src.core.config import Config
 from src import logger
-from src.schemas.chunk import Chunk,ChunkMetadata
+from src.schemas.chunk import Chunk, ChunkMetadata
 from src.vectorstores.keyword_search import KeywordSearchService
 from src.vectorstores.reranker import RerankerService 
 from src.embeddings.huggingface_embedding import EmbeddingService
@@ -19,18 +15,16 @@ class PineconeVectorStore(BaseVectorStore):
         self.index = self.pc.Index(Config.PINECONE_INDEX_NAME)
         self.batch_size = 150
         
-        
+        # AĞIR MODELLER BURADA SADECE 1 KEZ YÜKLENİR
         self.keyword_search = KeywordSearchService()
         self.reranker = RerankerService()
+        self.embedding = EmbeddingService()
         self.k_rrf = 60 # RRF sabiti
-
         
         logger.info(f"Pinecone ve Hibrit Servisler hazır: {Config.PINECONE_INDEX_NAME}")
 
     def upsert_chunks(self, chunks: List[Chunk], vectors: List[List[float]]):
         total_records = len(chunks)
-        
-        # Gönderilen asenkron istekleri tutacak bir liste
         async_results = []
 
         for i in range(0, total_records, self.batch_size):
@@ -49,12 +43,11 @@ class PineconeVectorStore(BaseVectorStore):
                         "start_index": chunk.metadata.start_index,
                         "end_index": chunk.metadata.end_index,
                         "total_doc_size": chunk.metadata.total_doc_size,
-                        "page_number": chunk.metadata.page_number # Buraya ekledik
+                        "page_number": chunk.metadata.page_number
                     }
                 })
 
             try:
-                # İsteği gönder ve dönen sonucu listeye ekle
                 res = self.index.upsert(
                     vectors=records, 
                     namespace="medical_data",
@@ -64,39 +57,29 @@ class PineconeVectorStore(BaseVectorStore):
             except Exception as e:
                 logger.error(f"Pinecone Batch hatası: {e}")
 
-        
-        # Tüm asenkron işlemlerin tamamlanmasını bekle
         logger.info(f"Bekleniyor: {len(async_results)} batch yükleniyor...")
         for res in async_results:
-            res.get() # Bu satır, ilgili batch yüklenene kadar kodun devam etmesini engeller.
+            res.get() 
             
         logger.info("Veriler Pinecone ve Yerel Keyword Index'e başarıyla yüklendi ve doğrulandı.")
 
     def _apply_rrf(self, semantic_docs: List[Chunk], keyword_docs: List[Chunk], top_k: int = 20) -> List[Chunk]:
         """Reciprocal Rank Fusion ile iki listeyi harmanlar."""
         rrf_scores = {}
-        
         doc_map: Dict[str, Chunk] = {} 
 
-        
         for rank, doc in enumerate(semantic_docs, 1):
             doc_id = doc.chunk_id
-            
             rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + (1 / (self.k_rrf + rank))
             doc_map[doc_id] = doc
 
-        
         for rank, chunk in enumerate(keyword_docs, 1):
             doc_id = chunk.chunk_id
             rrf_scores[doc_id] = rrf_scores.get(doc_id, 0) + (1 / (self.k_rrf + rank))
-            
-            
             if doc_id not in doc_map:
                 doc_map[doc_id] = chunk
 
-        
         sorted_ids = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
-        
         
         final_results = []
         for doc_id, score in sorted_ids[:top_k]:
@@ -105,8 +88,6 @@ class PineconeVectorStore(BaseVectorStore):
             final_results.append(target_chunk)
 
         return final_results
-
-
 
     def semantic_search(self, query_vector: List[float], top_k: int = 20) -> List[Chunk]:
         results = self.index.query(
@@ -134,7 +115,6 @@ class PineconeVectorStore(BaseVectorStore):
                 metadata=chunk_metadata
             )
             
-            
             chunk.chunk_id = match["id"] 
             chunk.score = match["score"]
             
@@ -142,16 +122,16 @@ class PineconeVectorStore(BaseVectorStore):
             
         return semantic_chunks
 
-
     def get_final_context(self, query: str, top_k: int = 5) -> List[Chunk]:
         """Uçtan uca Hibrit Arama + Reranking süreci."""
-
-        embedding = EmbeddingService()
-        query_vector = embedding.embed_query(query=query)
-        semantic_results = self.semantic_search(query_vector, top_k=20)
-        keyword_results = self.keyword_search.search(query, top_k=20)
         
-        candidates:List[Chunk] = self._apply_rrf(semantic_results, keyword_results, top_k=20)
+        # Her seferinde yüklemek yerine self.embedding kullanıyoruz (HIZ KAZANCI!)
+        query_vector = self.embedding.embed_query(query=query)
+        
+        semantic_results = self.semantic_search(query_vector, top_k=30)
+        keyword_results = self.keyword_search.search(query, top_k=30)
+        
+        candidates: List[Chunk] = self._apply_rrf(semantic_results, keyword_results, top_k=10)
         
         final_docs = self.reranker.rerank(query, candidates, top_k=top_k)
         

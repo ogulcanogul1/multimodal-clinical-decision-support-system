@@ -34,3 +34,4 @@ seaborn
 langchain-openai
 pymupdf
 xgboost
+langchain_tavily
