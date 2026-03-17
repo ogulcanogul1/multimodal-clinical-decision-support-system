@@ -81,6 +81,14 @@ def image_analyzer_node(state: GraphState):
     """CNN analizi ve Grad-CAM üretimini yapar."""
     return image_analyzer_service(state=state)
 
+def image_sync_node(state: GraphState):
+    """
+    SAHTE DÜĞÜM (DUMMY NODE)
+    Amacı: Görüntü dalının adım sayısını (superstep), Lab dalının adım sayısıyla eşitlemektir.
+    Hiçbir veriyi değiştirmez, sadece LangGraph'ı senkronize etmek için 1 adım oyalar.
+    """
+    return {}
+
 def image_skip_node(state: GraphState):
     """Görüntü (Röntgen, MR vb.) yoksa veya geçersizse CNN analizini güvenlice pas geçer."""
     print("\n⏭️ [IMAGE SKIP] Geçerli bir medikal görüntü (Röntgen/MR/OCT) bulunamadı, Görüntü Uzmanları (CNN) atlanıyor...")
@@ -102,6 +110,8 @@ def document_loader_node(state: GraphState):
     print("\n📄 [DOCUMENT LOADER] Tahlil PDF'i sisteme yükleniyor ve metne çevriliyor...")
         
     return document_loader_service(state=state)
+
+
 
 def lab_gatekeeper_node(state: GraphState):
     """Lab verisi tutarlılığını kontrol eder."""

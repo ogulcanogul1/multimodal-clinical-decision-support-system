@@ -10,6 +10,17 @@ from src.graph.enum.node_names import NodeNames
 
 logger = logging.getLogger(__name__)
 
+# =========================================================================
+# ⏱️ ZAMAN BÜKÜCÜ (SAHTE DÜĞÜM)
+# =========================================================================
+def image_sync_node(state: GraphState):
+    """
+    SAHTE DÜĞÜM (DUMMY NODE)
+    Amacı: Görüntü dalının adım sayısını (superstep), Lab dalının (PDF_EXTRACT yüzünden uzayan) 
+    adım sayısıyla eşitlemektir. Hiçbir veriyi değiştirmez, sadece 1 adım oyalar.
+    """
+    return {}
+
 # --- YÖNLENDİRME MANTIKLARI (ROUTERS) ---
 
 def parser_dynamic_router(state: GraphState) -> List[str]:
@@ -108,6 +119,9 @@ workflow.add_node(NodeNames.MLP_CONTROL.value, lab_gatekeeper_node)
 workflow.add_node(NodeNames.LAB_ANALYZER.value, lab_analyzer_node)
 workflow.add_node(NodeNames.LAB_SKIP.value, lab_skip_node)
 
+# --- SAHTE DÜĞÜMÜ EKLEDİK ---
+workflow.add_node("image_sync", image_sync_node)
+
 workflow.add_node(NodeNames.ADAPTIVE_FUSION.value, adaptive_fusion_node)
 workflow.add_node(NodeNames.DIAGNOSTIC_AGENT.value, diagnostic_agent_node)
 workflow.add_node(NodeNames.ATTRIBUTION.value, attribution_node)
@@ -129,14 +143,22 @@ workflow.add_conditional_edges(
     }
 )
 
-# 2. GÖRÜNTÜ (CNN) DALI
+# =========================================================================
+# 🥇 2. GÖRÜNTÜ (CNN) DALI - SENKRONİZASYON (DOUBLE EXECUTION ÇÖZÜMÜ)
+# =========================================================================
 workflow.add_conditional_edges(
     NodeNames.CNN_CONTROL.value,
     image_gate_logic,
     {"valid": NodeNames.IMAGE_ANALYZER.value, "invalid": NodeNames.IMAGE_SKIP.value}
 )
-workflow.add_edge(NodeNames.IMAGE_ANALYZER.value, NodeNames.ADAPTIVE_FUSION.value)
-workflow.add_edge(NodeNames.IMAGE_SKIP.value, NodeNames.ADAPTIVE_FUSION.value)
+
+# DÜZELTME: Doğrudan Fusion'a gitmek yerine önce Sahte Düğüme uğrar (Zaman kazanmak için).
+workflow.add_edge(NodeNames.IMAGE_ANALYZER.value, "image_sync")
+workflow.add_edge(NodeNames.IMAGE_SKIP.value, "image_sync")
+
+# Sahte düğümden çıkıp Fusion'a girer (Böylece Lab dalı ile tam aynı anda kapıya varmış olur).
+workflow.add_edge("image_sync", NodeNames.ADAPTIVE_FUSION.value)
+# =========================================================================
 
 # 3. LABORATUVAR (MLP) DALI
 workflow.add_edge(NodeNames.PDF_EXTRACT.value, NodeNames.MLP_CONTROL.value)
@@ -148,13 +170,7 @@ workflow.add_conditional_edges(
 workflow.add_edge(NodeNames.LAB_ANALYZER.value, NodeNames.ADAPTIVE_FUSION.value)
 workflow.add_edge(NodeNames.LAB_SKIP.value, NodeNames.ADAPTIVE_FUSION.value)
 
-# =========================================================================
-# 🥇 MİMARİ DEĞİŞİKLİĞİN KALBİ BURASI (SEQUENTIAL REASONING)
-# =========================================================================
-
 # 4. ADAPTIVE FUSION ÇIKIŞI -> RAG (QUERY OPTIMIZER)
-# Modellerin bulduğu anormallikleri (Diyabet, Zatürre vb.) sentezledik. 
-# Şimdi bu zengin sentezi literatürde araştırmak üzere Query Optimizer'a gönderiyoruz!
 workflow.add_edge(NodeNames.ADAPTIVE_FUSION.value, NodeNames.QUERY_OPTIMIZER.value)
 
 # 5. RAG (ARAŞTIRMA) DALI
@@ -165,17 +181,14 @@ workflow.add_edge(NodeNames.WEB_RESEARCH.value, NodeNames.KNOWLEDGE_SYNTHESIS.va
 workflow.add_edge(NodeNames.KNOWLEDGE_SYNTHESIS.value, NodeNames.RETRIEVAL_GRADER.value)
 
 # 6. RAG ÇIKIŞI -> DİAGNOSTİK AGENT (BAŞHEKİM)
-# Arama bitti, elde edilen bilimsel makaleler ve tüm anormallikler Başhekime sunuluyor!
 workflow.add_conditional_edges(
     NodeNames.RETRIEVAL_GRADER.value,
     retrieval_quality_logic,
     {
         "retry": NodeNames.QUERY_OPTIMIZER.value, 
-        "continue": NodeNames.DIAGNOSTIC_AGENT.value # Eskiden Fusion'a gidiyordu, şimdi Başhekime!
+        "continue": NodeNames.DIAGNOSTIC_AGENT.value 
     }
 )
-
-# =========================================================================
 
 # 7. RAPORLAMA VE DENETİM (SELF-CRITIQUE) DALI
 workflow.add_edge(NodeNames.DIAGNOSTIC_AGENT.value, NodeNames.ATTRIBUTION.value)
