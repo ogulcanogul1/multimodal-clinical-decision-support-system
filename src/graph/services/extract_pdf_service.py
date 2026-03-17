@@ -1,12 +1,7 @@
 import fitz
-import pytesseract
-from PIL import Image
-import io
 import os
 from src.graph.state import GraphState
 
-
-pytesseract.pytesseract.tesseract_cmd = r"D:/Tesseract/tesseract.exe"
 def extract_text_with_pymupdf(pdf_path: str) -> str:
     print('*' * 50)
     text = ""
@@ -16,24 +11,7 @@ def extract_text_with_pymupdf(pdf_path: str) -> str:
         for page_num in range(len(doc)):
             page = doc.load_page(page_num)
             page_text = page.get_text("text", sort=True)
-            
-            if page_text.strip():
-                # Normal PDF → direkt metin al
-                text += page_text + "\n"
-            else:
-                # Görsel PDF → OCR uygula
-                print(f"   🔍 Sayfa {page_num + 1}: OCR başlatılıyor...")
-                mat = fitz.Matrix(2.0, 2.0)
-                pix = page.get_pixmap(matrix=mat)
-                img = Image.open(io.BytesIO(pix.tobytes("png")))
-                
-                ocr_text = pytesseract.image_to_string(
-                    img,
-                    lang="tur+eng",
-                    config="--psm 6"
-                )
-                text += ocr_text + "\n"
-                print(f"   ✅ OCR tamamlandı: {len(ocr_text)} karakter")
+            text += page_text + "\n"
         
         doc.close()
         return text.strip()
@@ -52,10 +30,12 @@ def document_loader_service(state: GraphState):
 
     extracted_text = extract_text_with_pymupdf(pdf_path)
     print(f"extracted_text length: {len(extracted_text)}")
-    
-    if extracted_text:
-        print("   ✅ Metin başarıyla çıkarıldı.")
-    else:
-        print("   ⚠️ Metin çıkarılamadı.")
 
+    # Dijital PDF kontrolü — metin yoksa reddet
+    if not extracted_text:
+        print("   ❌ Bu PDF taranmış/görsel formatta. Sadece dijital PDF kabul edilmektedir.")
+        print("   💡 e-Nabız veya hastane sisteminden export edilen PDF'i yükleyiniz.")
+        return {"raw_document_text": "", "pdf_rejection_reason": "scanned_pdf"}
+
+    print("   ✅ Dijital PDF başarıyla okundu.")
     return {"raw_document_text": extracted_text}

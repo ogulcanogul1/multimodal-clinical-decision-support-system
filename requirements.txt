@@ -32,7 +32,5 @@ matplotlib
 scikit-learn
 seaborn
 langchain-openai
-pytesseract
-Pillow
 pymupdf
 xgboost

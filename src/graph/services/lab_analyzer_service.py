@@ -1,4 +1,5 @@
 import os
+import re
 import joblib
 import pandas as pd
 import numpy as np
@@ -18,13 +19,58 @@ DIAGNOSIS_MAPPING = {
     }
 }
 
+# ==========================================
+# 🛡️ ZORUNLU HAYATİ TAHLİLLER (KEY FEATURES)
+# XGBoost Feature Importance grafiklerinden alınmıştır.
+# ==========================================
+MANDATORY_FEATURES = {
+    "Liver": ["direct_bilirubin", "age", "tot_proteins", "albumin"],
+    "Kidney_CKD": ["hemo", "sg", "al"],
+    "Diabetes": ["Glucose", "BMI", "Age", "Insulin"],
+    "Cardiovascular": ["ap_hi", "cholesterol", "age"],
+    "Anemia": ["HGB", "MCHC", "MCH"]
+}
+
+# --- 1. LLM Çıktısını Normalize Etme (Key Eşleşme Güvenliği) ---
+def normalize_key(key: str) -> str:
+    """ 'H G B', 'Hgb.', 'hgb' gibi tüm varyasyonları 'hgb' yapar. """
+    return re.sub(r'[^a-z0-9]', '', str(key).lower().strip())
+
+# --- 2. Virgüllü Float Güvenliği (Pydantic Bypass) ---
+def parse_safe_float(val):
+    """ '3,5' veya '~3.5' gibi LLM'den gelebilecek bozuk stringleri güvenle float yapar. """
+    try:
+        if isinstance(val, str):
+            val = val.replace(',', '.')
+            val = re.sub(r'[^\d.]', '', val) # Sadece rakam ve noktayı bırak
+        return float(val)
+    except (ValueError, TypeError):
+        return np.nan
+
+# --- 3. Yeterli Veri Kontrolü ---
+def has_enough_data(df: pd.DataFrame, disease_name: str, threshold: float = 0.3) -> tuple[bool, str]:
+    """Hayati kolonların varlığını ve minimum veri doluluğunu kontrol eder."""
+    mandatory_cols = MANDATORY_FEATURES.get(disease_name, [])
+    
+    # Zorunlu tahliller kontrolü
+    for m_col in mandatory_cols:
+        if m_col not in df.columns or pd.isna(df.at[0, m_col]):
+            return False, f"Hayati tahlil eksik: {m_col}"
+            
+    # Genel doluluk oranı kontrolü (%30 altı ise riskli)
+    valid_ratio = df.notna().sum(axis=1).iloc[0] / len(df.columns)
+    if valid_ratio < threshold:
+        return False, f"Yetersiz veri doluluğu (%{valid_ratio*100:.1f})"
+        
+    return True, "OK"
+
 def predict_safely(model, raw_df):
     expected_features = model.feature_names_in_
     safe_df = pd.DataFrame(columns=expected_features)
     safe_df.loc[0] = np.nan 
     
     for col in raw_df.columns:
-        if col in expected_features:
+        if col in expected_features and pd.notna(raw_df.at[0, col]):
             safe_df.at[0, col] = raw_df.at[0, col]
             
     safe_df = safe_df.astype(float) 
@@ -35,7 +81,6 @@ def predict_safely(model, raw_df):
 
 def lab_analyzer_service(state: GraphState):
     print('*' * 50)
-
     print("\n🔬 [LAB ANALYZER] Lab data is being sent to Expert Models...")
     
     lab_report: LabReport = state.get("lab_data")
@@ -43,29 +88,33 @@ def lab_analyzer_service(state: GraphState):
     if not lab_report or not getattr(lab_report, 'is_valid_report', False):
         return {"lab_analysis_results": {"Error": "Invalid or unreadable laboratory document."}}
 
-    extracted_dict = {param.name.lower().strip(): param.value for param in lab_report.parameters}
+    # Normalize edilmiş Key ile sözlük oluştur
+    extracted_dict = {normalize_key(param.name): param.value for param in lab_report.parameters}
     
-    # --- GÜVENLİ VERİ ÇEKİMİ (STATE veya LAB_REPORT) ---
-    # Java'dan veya LLM'den gelen yaş verisini kesin olarak float tipine dönüştürüyoruz.
     try:
         raw_age = state.get("patient_age") or getattr(lab_report, 'patient_age', 35.0) or 35.0
         age = float(raw_age)
     except (ValueError, TypeError):
-        age = 35.0 # Eğer çevrilemezse (örn: saçma sapan bir string gelirse) varsayılan yaş
+        age = 35.0 
     
-    # Cinsiyet Parse Etme (MALE, FEMALE, None)
     raw_gender = str(state.get("patient_gender") or getattr(lab_report, 'patient_gender', "MALE")).strip().upper()
     is_male = raw_gender in ["MALE", "M", "ERKEK", "1"]
     
     liver_gender = 1 if is_male else 0
     cardio_gender = 2 if is_male else 1 
     
+    # --- GÜVENLİ VERİ ÇEKİMİ (Sessiz NaN Loglaması eklendi) ---
     def get_val(*aliases):
         for a in aliases:
-            if a in extracted_dict:
-                return float(extracted_dict[a])
+            norm_alias = normalize_key(a)
+            if norm_alias in extracted_dict:
+                return parse_safe_float(extracted_dict[norm_alias])
+        
+        # Sadece eksik verileri görmek için geliştirici ekranına bas (Console'u çok kirletmemek için kısa yazdırıyoruz)
+        print(f"   ⚠️ Eksik Tahlil: {aliases[0]}")
         return np.nan
 
+    print("\n🔍 Hastadan Çekilen Veriler Taranıyor...")
     raw_dfs = {
         "Diabetes": pd.DataFrame([{
             'Pregnancies': np.nan, 
@@ -84,7 +133,7 @@ def lab_analyzer_service(state: GraphState):
             'tot_bilirubin': get_val('total bilirubin', 'tbil', 'total bilirübin', 'tb', 'bil-t'),
             'direct_bilirubin': get_val('direct bilirubin', 'dbil', 'direkt bilirübin', 'bil-d'),
             'tot_proteins': get_val('total protein', 'tprot', 'tp', 'total protein'),
-            'albumin': get_val('albumin', 'alb'),
+            'albumin': get_val('albumin', 'alb', 'albümin'),
             'ag_ratio': get_val('a/g ratio', 'ag_ratio', 'a/g'),
             'sgpt': get_val('sgpt', 'alt', 'alanin aminotransferaz'),
             'sgot': get_val('sgot', 'ast', 'aspartat aminotransferaz'),
@@ -103,13 +152,13 @@ def lab_analyzer_service(state: GraphState):
             'MCV': get_val('mcv'),
             'MCH': get_val('mch'),
             'MCHC': get_val('mchc'),
-            'PLT': get_val('plt', 'trombosit', 'platelet', 'plt'),
+            'PLT': get_val('plt', 'trombosit', 'platelet'),
             'PDW': get_val('pdw'),
             'PCT': get_val('pct')
         }]),
         
         "Cardiovascular": pd.DataFrame([{
-            'age': age * 365.25, # Yaş artık kesin float olduğu için buradaki çarpma işlemi çökmeyecek
+            'age': age * 365.25, 
             'gender': cardio_gender,
             'height': get_val('height', 'boy'),
             'weight': get_val('weight', 'kilo', 'ağırlık'),
@@ -122,7 +171,9 @@ def lab_analyzer_service(state: GraphState):
         
         "Kidney_CKD": pd.DataFrame([{
             'age': age,
-            'bp': get_val('bp', 'bloodpressure', 'tansiyon'),
+            'bp': get_val('bp', 'bloodpressure', 'tansiyon', 'systolic'),
+            'sg': get_val('sg', 'specific gravity', 'dansite', 'özgül ağırlık'), # Yeni eklendi
+            'al': get_val('al', 'albumin', 'alb', 'albümin'), # Yeni eklendi
             'bgr': get_val('bgr', 'glucose', 'glu', 'şeker'),
             'bu': get_val('bu', 'bun', 'blood urea', 'üre', 'ure'),
             'sc': get_val('sc', 'creatinine', 'kreatinin', 'crea'),
@@ -138,63 +189,80 @@ def lab_analyzer_service(state: GraphState):
     analysis_results = {}
     model_dir = "data/mlp/" 
 
-    # --- YENİ EKLENEN: JAVA'YA DÖNÜLECEK DEĞİŞKENLER ---
     max_risk_score = 0.0
     primary_prediction = "Healthy"
     feature_importance_dict = {}
 
+    print("\n🧠 Modeller Değerlendiriliyor...")
     for disease_name, raw_df in raw_dfs.items():
         model_path = os.path.join(model_dir, f"{disease_name}_expert_model.joblib")
         
         try:
-            if os.path.exists(model_path):
-                model = joblib.load(model_path)
-                prob, pred = predict_safely(model, raw_df)
-                pred_class = int(pred)
-                
-                if disease_name in ["Kidney_CKD", "Liver"]:
-                    risk_ratio = float(prob[0]) # NumPy tiplerinden kurtulmak için kesin float
-                elif disease_name == "Anemia":
-                    risk_ratio = float(prob[pred_class])
-                else:
-                    risk_ratio = float(prob[1])
-                
-                message = DIAGNOSIS_MAPPING[disease_name][pred_class]
-                analysis_results[f"{disease_name}_Report"] = f"{message} (Risk: {risk_ratio*100:.1f}%)"
-
-                # En yüksek riskli hastalığı ve özelliklerini (XAI) kaydet
-                if risk_ratio > max_risk_score and "✅ Healthy" not in message:
-                    max_risk_score = risk_ratio
-                    primary_prediction = message.replace("⚠️ ", "")
-                    
-                    if hasattr(model, "feature_importances_"):
-                        importances = model.feature_importances_
-                        features = model.feature_names_in_
-                        fi_pairs = sorted(zip(features, importances), key=lambda x: x[1], reverse=True)
-                        feature_importance_dict = {f: float(imp) for f, imp in fi_pairs[:4] if imp > 0}
-                    
-            else:
+            if not os.path.exists(model_path):
                 analysis_results[f"{disease_name}_Report"] = f"Model File Not Found ({disease_name}_expert_model.joblib)"
+                continue
                 
+            model = joblib.load(model_path)
+            
+            # --- ZIRH: VERİ YETERLİLİK KONTROLÜ ---
+            is_valid, error_msg = has_enough_data(raw_df, disease_name)
+            if not is_valid:
+                print(f"   ⏭️ {disease_name} Modeli Atlandı -> {error_msg}")
+                analysis_results[f"{disease_name}_Report"] = f"Analysis Skipped: {error_msg}"
+                continue
+                
+            prob, pred = predict_safely(model, raw_df)
+            pred_class = int(pred)
+            
+            if disease_name in ["Kidney_CKD", "Liver"]:
+                risk_ratio = float(prob[0]) 
+            elif disease_name == "Anemia":
+                risk_ratio = float(prob[pred_class])
+            else:
+                risk_ratio = float(prob[1])
+            
+            message = DIAGNOSIS_MAPPING[disease_name][pred_class]
+            analysis_results[f"{disease_name}_Report"] = f"{message} (Risk: {risk_ratio*100:.1f}%)"
+            print(f"   ✅ {disease_name} Modeli Çalıştı -> {message}")
+
+            if risk_ratio > max_risk_score and "✅ Healthy" not in message:
+                max_risk_score = risk_ratio
+                primary_prediction = message.replace("⚠️ ", "")
+                
+                if hasattr(model, "feature_importances_"):
+                    importances = model.feature_importances_
+                    features = model.feature_names_in_
+                    fi_pairs = sorted(zip(features, importances), key=lambda x: x[1], reverse=True)
+                    feature_importance_dict = {f: float(imp) for f, imp in fi_pairs[:4] if imp > 0}
+                    
         except Exception as e:
             analysis_results[f"{disease_name}_Report"] = f"Analysis Error: {str(e)}"
 
-    print("✅ All 5 Expert Models executed successfully and results synthesized!")
+    print("\n✅ All Expert Models executed and results synthesized!")
     
-    print(f"""
-lab_analysis_results : {analysis_results}
-
-lab_prediction : {primary_prediction}
-
-lab_confidence : {float(max_risk_score)}
-
-feature_importance : {feature_importance_dict}
-""")
-
-    # JAVA'NIN BEKLEDİĞİ TÜM STATE VERİLERİ DÖNÜLÜYOR
     return {
         "lab_analysis_results": analysis_results,
         "lab_prediction": primary_prediction,
         "lab_confidence": float(max_risk_score),
         "feature_importance": feature_importance_dict
     }
+
+
+if __name__ == "__main__":
+    import fitz
+    import pytesseract
+    from PIL import Image
+    import io
+
+    pytesseract.pytesseract.tesseract_cmd = r"D:/Tesseract/tesseract.exe"
+
+    pdf_path = r"D:/Python/projects/medical_system/data/resource_db/documents/444a01fc-291f-41af-abd9-75084a988c6f.pdf"
+
+    doc = fitz.open(pdf_path)
+    page = doc.load_page(0)
+    mat = fitz.Matrix(2.0, 2.0)
+    pix = page.get_pixmap(matrix=mat)
+    img = Image.open(io.BytesIO(pix.tobytes("png")))
+
+    result = pytesseract.image_to_string(img, lang="tur+eng", config="--psm 6")
+    print(result)
