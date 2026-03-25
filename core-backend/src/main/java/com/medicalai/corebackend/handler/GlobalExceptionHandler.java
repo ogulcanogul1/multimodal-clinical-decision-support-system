@@ -5,6 +5,7 @@ import com.medicalai.corebackend.exception.NotFoundException;
 import com.medicalai.corebackend.exception.NotFoundByIdException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -38,6 +39,17 @@ public class GlobalExceptionHandler {
                 HttpStatus.NOT_FOUND.value()
         );
         return new ResponseEntity<>(errorDetails, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorDetails> handleAuthenticationException(AuthenticationException ex, WebRequest request) {
+        ErrorDetails errorDetails = new ErrorDetails(
+                LocalDateTime.now(),
+                "Kimlik doğrulama başarısız.",
+                request.getDescription(false),
+                HttpStatus.UNAUTHORIZED.value()
+        );
+        return new ResponseEntity<>(errorDetails, HttpStatus.UNAUTHORIZED);
     }
 
     // 1. Genel RuntimeException Hataları (Örn: "TC Zaten Kayıtlı")

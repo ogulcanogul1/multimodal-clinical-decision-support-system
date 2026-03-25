@@ -39,6 +39,9 @@ logs/
 core_backend_default_gitignore.txt
 frontend_default_gitignore.txt
 
+claude_backend_auth.txt
+claude_frontend.txt
+
 # Distribution / packaging
 .Python
 build/

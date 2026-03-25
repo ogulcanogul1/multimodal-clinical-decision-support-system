@@ -29,4 +29,7 @@ app:
   storage:
     image-dir: "D:/Python/projects/medical_system/data/resource_db/images"
     document-dir: "D:/Python/projects/medical_system/data/resource_db/documents"
+  jwt:
+    secret: "medical-system-jwt-secret-key-must-be-at-least-256-bits-long-for-hmac-sha"
+    expiration-ms: 86400000
 

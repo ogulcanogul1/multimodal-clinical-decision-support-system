@@ -6,6 +6,7 @@ import com.medicalai.corebackend.entity.Doctor;
 import com.medicalai.corebackend.entity.enums.Specialty;
 import com.medicalai.corebackend.repository.DoctorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 public class DoctorService {
 
     private final DoctorRepository doctorRepository;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * Yeni bir doktor kaydı oluşturur.
@@ -37,7 +39,7 @@ public class DoctorService {
                 .email(request.email())
                 .licenseNumber(request.licenseNumber())
                 .specialty(request.specialty())
-                .passwordHash(request.password()) // NOT: Gerçek projede BCrypt ile encode edilmeli
+                .passwordHash(passwordEncoder.encode(request.password()))
                 .build();
 
         Doctor savedDoctor = doctorRepository.save(doctor);
@@ -136,7 +138,7 @@ public class DoctorService {
 
         // Şifre boş değilse güncelle (Opsiyonel: Boş gelirse eski şifre kalsın denebilir)
         if (request.password() != null && !request.password().isBlank()) {
-            existingDoctor.setPasswordHash(request.password());
+            existingDoctor.setPasswordHash(passwordEncoder.encode(request.password()));
         }
 
         Doctor updated = doctorRepository.save(existingDoctor);
