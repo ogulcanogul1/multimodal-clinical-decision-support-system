@@ -30,6 +30,8 @@ public class ChatMessageService {
     private final ImageAnalysisRepository imageAnalysisRepository;
     private final DocumentAnalysisRepository documentAnalysisRepository;
 
+    // 🛡️ @Transactional HAYAT KURTARIR: Aşağıdaki kodların herhangi bir yerinde RuntimeException fırlatılırsa,
+    // o ana kadar veri tabanına yapılmış tüm kayıtları (örn: doktorun mesajını) geri alır (Rollback).
     @Transactional
     public ChatMessageResponse sendMessage(String consultationId, ChatMessageRequest request) {
         Consultation consultation = consultationRepository.findById(consultationId)
@@ -54,7 +56,7 @@ public class ChatMessageService {
                 ))
                 .toList();
 
-        // 1. DOKTORUN YENİ MESAJINI KAYDET
+        // 1. DOKTORUN YENİ MESAJINI KAYDET (Geçici Olarak)
         ChatMessage doctorMessage = ChatMessage.builder()
                 .consultation(consultation)
                 .senderRole(MessageSender.DOCTOR)
@@ -91,8 +93,15 @@ public class ChatMessageService {
                 history
         );
 
-        // PYTHON'DAN CEVAP GELİYOR
+        // 🚨 PYTHON'DAN CEVAP BEKLEME AŞAMASI
+        // Eğer Python tarafı HTTP 500 fırlatırsa, RestTemplate/WebClient burada otomatik Exception atacak
+        // ve kod alt satırlara inmeden işlemi iptal edip DB'yi Rollback yapacak.
         AiAgentResponse aiResponse = aiIntegrationService.askFastApi(aiRequest);
+
+        // Ekstra Güvenlik: Eğer API hata atmayıp null dönerse diye manuel kontrol (Zırh)
+        if (aiResponse == null) {
+            throw new RuntimeException("Yapay Zeka servisinden geçerli bir yanıt alınamadı. İşlem iptal ediliyor.");
+        }
 
         // --- EKLENEN KISIM: MULTIMODAL VERİLERİ VERİTABANINA İŞLEME ---
 

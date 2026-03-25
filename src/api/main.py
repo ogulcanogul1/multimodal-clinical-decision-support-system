@@ -11,16 +11,13 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Klasörlerin kesin (absolute) yollarını belirliyoruz
 IMAGE_DIR = BASE_DIR / "data" / "resource_db" / "images"
 DOC_DIR = BASE_DIR / "data" / "resource_db" / "documents"
 
 def get_absolute_image_path(filename: str | None) -> str | None:
     if not filename:
         return None
-    # Sadece dosya adını alıyoruz (Örn: "123.png")
     clean_filename = Path(filename).name
-    # Tam yolu oluşturup string olarak dönüyoruz
     return str(IMAGE_DIR / clean_filename)
 
 def get_absolute_doc_path(filename: str | None) -> str | None:
@@ -40,15 +37,13 @@ async def consult_agent(request: AgentRequest):
     try:
         print('*' * 50)
         
-        # --- MİMARİ DÜZELTME: Java'dan gelen isimleri TAM YOLA çeviriyoruz ---
         safe_image_path = get_absolute_image_path(request.imageUrl)
         safe_doc_path = get_absolute_doc_path(request.documentUrl)
 
-        # 1. BAŞLANGIÇ DURUMUNU (INITIAL STATE) OLUŞTUR
         initial_state = {
             "message_content": request.messageContent,
-            "image_url": safe_image_path,   # Artık kusursuz "D:/.../images/uuid.png" oldu!
-            "document_url": safe_doc_path,  # Artık kusursuz "D:/.../documents/uuid.pdf" oldu!
+            "image_url": safe_image_path,   
+            "document_url": safe_doc_path,  
             "chief_complaint": request.chiefComplaint,
             
             "patient_age": request.patientAge,
@@ -58,7 +53,6 @@ async def consult_agent(request: AgentRequest):
             "allergies": request.allergies,
             "current_medications": request.currentMedications,
             
-            # Pydantic objelerini dictionary listesine çeviriyoruz
             "chat_history": [{"role": m.role, "content": m.content} for m in request.chatHistory],
             
             "active_branches": [],
@@ -72,7 +66,7 @@ async def consult_agent(request: AgentRequest):
         print(json.dumps(initial_state, indent=4, ensure_ascii=False))
         print("---------------------\n")
 
-        # 2. LANGGRAPH'I ÇALIŞTIR (INVOKE)
+        # 2. LANGGRAPH'I ÇALIŞTIR
         final_state = medical_graph.invoke(initial_state)
 
         print('*' * 50)
@@ -81,52 +75,25 @@ async def consult_agent(request: AgentRequest):
             aiMessage=final_state.get("final_report", "Analiz yapılamadı."),
             sources=final_state.get("evidence_links", []),
             
-            # Görüntü Çıktıları
             imagePrediction=final_state.get("image_prediction"),
             imageConfidenceScore=final_state.get("image_confidence"),
             heatmapUrl=final_state.get("grad_cam_path"),
             
-            # Belge Çıktıları
             documentPrediction=final_state.get("lab_prediction"),
             documentConfidenceScore=final_state.get("lab_confidence"),
             featureImportance=final_state.get("feature_importance")
         )
 
-        print(f"""
-final_report : {agent_response.aiMessage}
-
-sources : {agent_response.sources}
-
-image_prediction : {agent_response.imagePrediction}
-
-imageConfidenceScore : {agent_response.imageConfidenceScore}
-
-grad_cam_path : {agent_response.heatmapUrl}
-
-lab_prediction : {agent_response.documentPrediction}
-
-lab_confidence : {agent_response.documentConfidenceScore}
-
-feature_importance : {agent_response.featureImportance}
-""")
-
-        # 3. GRAPH'TAN ÇIKAN SONUCU JAVA'YA PAKETLE
         return agent_response
 
     except Exception as e:
-        print(f"GRAPH ÇALIŞIRKEN HATA OLUŞTU: {e}")
-        # Graph çöktüğü için final_state boş olabilir, bu yüzden güvenli bir hata cevabı dönüyoruz
-        return AgentResponse(
-            aiMessage="Yapay zeka sunucusunda (LangGraph) beklenmeyen bir hata oluştu. Lütfen sistem yöneticisine başvurun.",
-            sources=[],
-            imagePrediction=None,
-            imageConfidenceScore=None,
-            heatmapUrl=None,
-            documentPrediction=None,
-            documentConfidenceScore=None,
-            featureImportance=None
+        print(f"🚨 GRAPH ÇALIŞIRKEN HATA OLUŞTU: {e}")
+        # 🛡️ DÜZELTME: Java'yı kandırmak yerine, doğrudan HTTP 500 hatası fırlatıyoruz!
+        # Java bu hatayı aldığı an veri tabanına kaydetmeyi iptal edecek (Rollback).
+        raise HTTPException(
+            status_code=500, 
+            detail="Yapay zeka analiz sürecinde (LangGraph) beklenmeyen bir hata oluştu."
         )
 
 if __name__ == "__main__":
-    # Ufak düzeltme: Modül yolunu tam yazmak terminal hatalarını önler
     uvicorn.run("src.api.main:app", host="0.0.0.0", port=8000, reload=True)

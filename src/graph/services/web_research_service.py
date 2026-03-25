@@ -9,19 +9,14 @@ from src.schemas.chunk import Chunk, ChunkMetadata
 from src.vectorstores.reranker import RerankerService
 from src import logger
 
-# AĞIR MODEL GLOBALDE (Sunucu başlarken 1 kez yüklenir)
+
 try:
     reranker_service = RerankerService(model_name="BAAI/bge-reranker-v2-m3")
 except Exception as e:
     logger.error(f"Reranker başlatılamadı: {e}")
     reranker_service = None
 
-# ==========================================
-# ⚡ HIZ VE KALİTE OPTİMİZASYONU (TAVILY)
-# ==========================================
-# max_results: Her sorgu için 2 sayfa getirir.
-# search_depth="basic": Alt sayfalara dalıp saniyelerce beklemez, anında metni çeker.
-# include_domains: Sadece dünyanın en güvenilir tıp otoritelerinde arama yapar.
+
 search_tool = TavilySearch(
     max_results=2,
     search_depth="basic",
@@ -58,23 +53,19 @@ def web_research_service(state: GraphState):
         MAX_CHAR_LIMIT = 5000 
         all_web_chunks = []
 
-        # ==========================================
-        # 🚀 PARALEL ARAMA (THREAD POOL)
-        # ==========================================
+        
         def fetch_tavily(query: str):
             """Tekil arama fonksiyonu (Thread'ler bunu çalıştıracak)"""
             logger.info(f"🌐 Searching Web: {query}")
             try:
                 result = search_tool.invoke({"query": query})
                 
-                # ZIRH 1: Eğer Tavily listesi yerine JSON String dönerse, onu Python listesine çevir
                 if isinstance(result, str):
                     try:
                         result = json.loads(result)
                     except json.JSONDecodeError:
                         return []
                         
-                # 🛡️ ZIRH 2: Eğer Dictionary dönerse içindeki "results" listesini çek!
                 if isinstance(result, dict) and "results" in result:
                     result = result["results"]
                         
@@ -85,14 +76,11 @@ def web_research_service(state: GraphState):
                 logger.error(f"❌ Sub-search error for '{query}': {e}")
                 return []
 
-        # Tüm web sorgularını aynı anda (milisaniyeler içinde) fırlatır!
         with concurrent.futures.ThreadPoolExecutor(max_workers=len(web_queries)) as executor:
             parallel_results = list(executor.map(fetch_tavily, web_queries))
 
-        # Gelen verileri Chunk objesine çevirme
         for search_results in parallel_results:
             for res in search_results:
-                # API yapısına göre metin genelde "content" anahtarında olur
                 raw_content = res.get("content", "")
                 
                 if len(raw_content) > MAX_CHAR_LIMIT:
@@ -112,9 +100,7 @@ def web_research_service(state: GraphState):
             logger.warning("No web chunks retrieved.")
             return {"retrieved_docs": []}
 
-        # ==========================================
-        # 🎯 ENTEGRE RERANKER KATMANI
-        # ==========================================
+        
         if not reranker_service:
             logger.error("Reranker modeli yüklü değil!")
             return {"retrieved_docs": []}
