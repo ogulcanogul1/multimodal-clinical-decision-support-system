@@ -6,15 +6,38 @@ __pycache__/
 # C extensions
 *.so
 
-# 
+# ==========================================
+# 🖥️ FRONTEND (React / Vite) İÇİN KURALLAR
+# ==========================================
 
+# Bağımlılıklar ve Derlenmiş Çıktılar (EN ÖNEMLİSİ)
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+
+# Frontend Logları
+frontend/logs/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/lerna-debug.log*
+
+# (Not: .DS_Store, .idea, .vscode gibi editör dosyaları 
+# muhtemelen ana gitignore'unda zaten vardır, o yüzden 
+# frontend/ içine özel olarak eklemeye gerek yok).
+
+
+# 
 note.txt
 structure.ipynb
 
 data/
 data/keyword_search/
 logs/
-core_backend_default_gitignore
+core_backend_default_gitignore.txt
+frontend_default_gitignore.txt
 
 # Distribution / packaging
 .Python
