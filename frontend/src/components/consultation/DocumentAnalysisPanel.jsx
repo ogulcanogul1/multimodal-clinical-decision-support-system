@@ -97,25 +97,39 @@ export default function DocumentAnalysisPanel({
       {/* Dropzone */}
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition ${
+        className={`relative border-2 border-dashed rounded-xl py-8 px-4 text-center cursor-pointer transition-all duration-200 ${
           isDragActive
-            ? 'border-primary-500 bg-primary-50'
-            : 'border-surface-border hover:border-primary-300 hover:bg-surface-hover'
+            ? 'border-primary-500 bg-primary-50 scale-[1.01]'
+            : 'border-surface-border hover:border-primary-400 hover:bg-primary-50/40'
         } ${(uploading || !isOpen) ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <input {...getInputProps()} />
         {uploading ? (
+          <div className="flex flex-col items-center gap-3">
+            <LoadingSpinner size="md" />
+            <p className="text-sm font-medium text-text-secondary">Analiz ediliyor...</p>
+            <p className="text-xs text-text-muted">Lütfen bekleyin</p>
+          </div>
+        ) : isDragActive ? (
           <div className="flex flex-col items-center gap-2">
-            <LoadingSpinner />
-            <p className="text-xs text-text-muted">Analiz ediliyor...</p>
+            <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
+              <Upload size={22} className="text-primary-600" />
+            </div>
+            <p className="text-sm font-semibold text-primary-600">Dosyayı bırakın</p>
           </div>
         ) : (
-          <>
-            <Upload size={24} className="mx-auto text-text-muted mb-2" />
-            <p className="text-xs text-text-secondary">
-              {isDragActive ? 'Bırakın...' : 'PDF dosyasını sürükleyin veya tıklayın'}
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-12 h-12 rounded-full bg-surface-hover border border-surface-border flex items-center justify-center mb-1">
+              <FileText size={22} className="text-text-muted" />
+            </div>
+            <p className="text-sm font-medium text-text-secondary">
+              Dosyayı buraya sürükleyin
             </p>
-          </>
+            <p className="text-xs text-text-muted">veya tıklayarak seçin</p>
+            <span className="mt-1 text-xs text-text-muted bg-surface-hover border border-surface-border px-2 py-0.5 rounded-full">
+              PDF, TXT
+            </span>
+          </div>
         )}
       </div>
 

@@ -1,0 +1,13 @@
+package com.medicalai.corebackend.exception;
+
+public enum ErrorCode {
+    EMAIL_ALREADY_EXISTS,
+    LICENSE_ALREADY_EXISTS,
+    TC_ALREADY_EXISTS,
+    PATIENT_NOT_FOUND,
+    DOCTOR_NOT_FOUND,
+    INVALID_CREDENTIALS,
+    VALIDATION_ERROR,
+    UNAUTHORIZED,
+    INTERNAL_ERROR
+}

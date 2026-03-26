@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast'
 import { LogIn, Stethoscope } from 'lucide-react'
 import { login } from '../../services/authService'
 import { useAuth } from '../../hooks/useAuth'
+import { getErrorMessage } from '../../utils/errorHandler'
 
 const schema = z.object({
   email: z.string().email('Geçerli bir email adresi giriniz'),
@@ -27,12 +28,7 @@ export default function LoginPage() {
       authLogin(res.data)
       navigate('/dashboard')
     } catch (err) {
-      const status = err.response?.status
-      if (status === 401) {
-        toast.error('Email veya şifre hatalı')
-      } else {
-        toast.error('Bir hata oluştu. Lütfen tekrar deneyin.')
-      }
+      toast.error(getErrorMessage(err))
     }
   }
 

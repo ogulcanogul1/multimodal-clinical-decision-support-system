@@ -5,6 +5,7 @@ import { ClipboardPlus, Search } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { getPatientById, searchByNationalId } from '../../services/patientService'
 import { createConsultation } from '../../services/consultationService'
+import { getErrorMessage } from '../../utils/errorHandler'
 import { GENDER_LABELS, BLOOD_TYPE_LABELS } from '../../utils/constants'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 
@@ -23,7 +24,7 @@ export default function NewConsultationPage() {
     if (preloadPatientId) {
       getPatientById(preloadPatientId)
         .then((res) => setPatient(res.data))
-        .catch(() => toast.error('Hasta bilgisi yüklenemedi'))
+        .catch((err) => toast.error(getErrorMessage(err)))
     }
   }, [preloadPatientId])
 
@@ -36,8 +37,8 @@ export default function NewConsultationPage() {
     try {
       const res = await searchByNationalId(searchQuery)
       setPatient(res.data)
-    } catch {
-      toast.error('Hasta bulunamadı')
+    } catch (err) {
+      toast.error(getErrorMessage(err))
       setPatient(null)
     } finally {
       setSearching(false)
@@ -53,8 +54,8 @@ export default function NewConsultationPage() {
         doctorId: doctor.doctorId,
       })
       navigate(`/consultation/${res.data.id}`)
-    } catch {
-      toast.error('Konsültasyon oluşturulamadı')
+    } catch (err) {
+      toast.error(getErrorMessage(err))
     } finally {
       setCreating(false)
     }

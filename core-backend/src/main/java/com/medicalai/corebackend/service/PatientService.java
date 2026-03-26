@@ -6,6 +6,8 @@ import com.medicalai.corebackend.entity.Allergy;
 import com.medicalai.corebackend.entity.Disease;
 import com.medicalai.corebackend.entity.Medication;
 import com.medicalai.corebackend.entity.Patient;
+import com.medicalai.corebackend.exception.BusinessException;
+import com.medicalai.corebackend.exception.ErrorCode;
 import com.medicalai.corebackend.repository.AllergyRepository;
 import com.medicalai.corebackend.repository.DiseaseRepository;
 import com.medicalai.corebackend.repository.MedicationRepository;
@@ -33,7 +35,7 @@ public class PatientService {
 
         // Aynı TC ile kayıt var mı kontrolü
         if (patientRepository.findByNationalId(request.nationalId()).isPresent()) {
-            throw new RuntimeException("Bu TC Kimlik numarası ile kayıtlı bir hasta zaten var!");
+            throw new BusinessException(ErrorCode.TC_ALREADY_EXISTS, "Bu TC Kimlik numarası ile kayıtlı bir hasta zaten var!");
         }
 
         Patient patient = Patient.builder()
@@ -64,7 +66,7 @@ public class PatientService {
     @Transactional(readOnly = true)
     public PatientResponse getPatientById(String id) {
         Patient patient = patientRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Hasta bulunamadı. ID: " + id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.PATIENT_NOT_FOUND, "Hasta bulunamadı. ID: " + id));
         return mapToResponse(patient);
     }
 
@@ -72,7 +74,7 @@ public class PatientService {
     @Transactional(readOnly = true)
     public PatientResponse getPatientByNationalId(String nationalId) {
         Patient patient = patientRepository.findByNationalId(nationalId)
-                .orElseThrow(() -> new RuntimeException("Hasta bulunamadı. TC: " + nationalId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.PATIENT_NOT_FOUND, "Hasta bulunamadı. TC: " + nationalId));
         return mapToResponse(patient);
     }
 
@@ -80,7 +82,7 @@ public class PatientService {
     @Transactional
     public PatientResponse updatePatient(String id, PatientRequest request) {
         Patient patient = patientRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Güncellenecek hasta bulunamadı. ID: " + id));
+                .orElseThrow(() -> new BusinessException(ErrorCode.PATIENT_NOT_FOUND, "Güncellenecek hasta bulunamadı. ID: " + id));
 
         // Temel bilgileri güncelle
         patient.setNationalId(request.nationalId());

@@ -39,5 +39,7 @@ export function getConfidenceColor(confidence) {
 }
 
 export function getConfidencePercent(confidence) {
+  if (confidence == null) return 0
+  if (confidence > 1) return Math.round(confidence)
   return Math.round(confidence * 100)
 }

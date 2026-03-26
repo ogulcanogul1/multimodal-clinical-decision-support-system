@@ -14,6 +14,7 @@ import {
   getMedications,
 } from '../../services/patientService'
 import { GENDER_LABELS, BLOOD_TYPE_LABELS } from '../../utils/constants'
+import { getErrorMessage } from '../../utils/errorHandler'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 
 const schema = z.object({
@@ -123,8 +124,8 @@ export default function PatientFormPage() {
             mRes.data.filter((m) => p.currentMedications?.includes(m.name)).map((m) => m.id)
           )
         }
-      } catch {
-        toast.error('Veriler yüklenemedi')
+      } catch (err) {
+        toast.error(getErrorMessage(err))
       } finally {
         setLoading(false)
       }
@@ -151,12 +152,7 @@ export default function PatientFormPage() {
         navigate(`/patients/${res.data.id}`)
       }
     } catch (err) {
-      const msg = err.response?.data?.message || ''
-      if (msg.includes('TC') || msg.includes('nationalId')) {
-        toast.error('Bu TC Kimlik No ile kayıtlı hasta zaten var')
-      } else {
-        toast.error('İşlem sırasında bir hata oluştu')
-      }
+      toast.error(getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -174,7 +170,7 @@ export default function PatientFormPage() {
     'w-full px-4 py-2.5 rounded-lg border border-surface-border bg-white text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition'
 
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-text-primary">
           {editMode ? 'Hasta Düzenle' : 'Yeni Hasta'}

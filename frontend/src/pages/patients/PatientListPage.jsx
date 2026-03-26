@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { getPatients, searchByNationalId } from '../../services/patientService'
+import { getErrorMessage } from '../../utils/errorHandler'
 import PatientCard from '../../components/patient/PatientCard'
 import PatientSearchBar from '../../components/patient/PatientSearchBar'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
@@ -19,7 +20,7 @@ export default function PatientListPage() {
         setPatients(res.data)
         setFiltered(res.data)
       })
-      .catch(() => toast.error('Hastalar yüklenemedi'))
+      .catch((err) => toast.error(getErrorMessage(err)))
       .finally(() => setLoading(false))
   }, [])
 

@@ -7,6 +7,7 @@ import { UserPlus, Stethoscope } from 'lucide-react'
 import { register as registerUser } from '../../services/authService'
 import { useAuth } from '../../hooks/useAuth'
 import { SPECIALTY_LABELS } from '../../utils/constants'
+import { getErrorMessage } from '../../utils/errorHandler'
 
 const schema = z
   .object({
@@ -45,12 +46,7 @@ export default function RegisterPage() {
       authLogin(res.data)
       navigate('/dashboard')
     } catch (err) {
-      const msg = err.response?.data?.message || ''
-      if (msg.toLowerCase().includes('email')) {
-        toast.error('Bu email zaten kullanımda')
-      } else {
-        toast.error('Kayıt sırasında bir hata oluştu.')
-      }
+      toast.error(getErrorMessage(err))
     }
   }
 

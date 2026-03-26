@@ -14,6 +14,14 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (import.meta.env.DEV) {
+      console.error('[API Error]', {
+        url: error.config?.url,
+        status: error.response?.status,
+        errorCode: error.response?.data?.errorCode,
+        message: error.response?.data?.message,
+      })
+    }
     if (error.response?.status === 401) {
       localStorage.removeItem('jwt_token')
       localStorage.removeItem('doctor_info')
