@@ -14,7 +14,10 @@ const schema = z
     firstName: z.string().min(2, 'Ad en az 2 karakter olmalı'),
     lastName: z.string().min(2, 'Soyad en az 2 karakter olmalı'),
     email: z.string().email('Geçerli bir email giriniz'),
-    licenseNumber: z.string().min(1, 'Lisans numarası zorunludur'),
+    licenseNumber: z
+      .string()
+      .min(1, 'Lisans numarası zorunludur')
+      .regex(/^LIC-\d+$/, 'Lisans numarası LIC-{numara} formatında olmalıdır (örn: LIC-12345)'),
     specialty: z.string().min(1, 'Uzmanlık seçiniz'),
     password: z
       .string()
@@ -105,7 +108,7 @@ export default function RegisterPage() {
               </label>
               <input
                 {...register('licenseNumber')}
-                placeholder="12345"
+                placeholder="LIC-12345"
                 className={inputClass}
               />
               {errors.licenseNumber && (

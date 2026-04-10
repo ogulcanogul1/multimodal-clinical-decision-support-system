@@ -13,7 +13,10 @@ const schema = z.object({
   firstName: z.string().min(2, 'Ad en az 2 karakter olmalı'),
   lastName: z.string().min(2, 'Soyad en az 2 karakter olmalı'),
   specialty: z.string().min(1, 'Uzmanlık seçiniz'),
-  licenseNumber: z.string().min(1, 'Lisans numarası zorunludur'),
+  licenseNumber: z
+    .string()
+    .min(1, 'Lisans numarası zorunludur')
+    .regex(/^LIC-\d+$/, 'Lisans numarası LIC-{numara} formatında olmalıdır (örn: LIC-12345)'),
 })
 
 export default function ProfilePage() {
@@ -148,7 +151,7 @@ export default function ProfilePage() {
               <label className="block text-xs font-medium text-text-secondary mb-1.5">
                 Lisans Numarası
               </label>
-              <input {...register('licenseNumber')} className={inputClass} placeholder="Lisans numaranız" />
+              <input {...register('licenseNumber')} className={inputClass} placeholder="LIC-12345" />
               {errors.licenseNumber && (
                 <p className="text-danger-600 text-xs mt-1">{errors.licenseNumber.message}</p>
               )}

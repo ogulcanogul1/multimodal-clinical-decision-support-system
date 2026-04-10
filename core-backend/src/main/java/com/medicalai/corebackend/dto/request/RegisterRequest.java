@@ -15,6 +15,7 @@ public record RegisterRequest(
         String email,
 
         @NotBlank(message = "Lisans numarası zorunludur")
+        @Pattern(regexp = "^LIC-\\d+$", message = "Lisans numarası LIC-{numara} formatında olmalıdır (örn: LIC-12345)")
         String licenseNumber,
 
         @NotNull(message = "Uzmanlık alanı zorunludur")

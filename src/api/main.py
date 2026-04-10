@@ -88,8 +88,7 @@ async def consult_agent(request: AgentRequest):
 
     except Exception as e:
         print(f"🚨 GRAPH ÇALIŞIRKEN HATA OLUŞTU: {e}")
-        # 🛡️ DÜZELTME: Java'yı kandırmak yerine, doğrudan HTTP 500 hatası fırlatıyoruz!
-        # Java bu hatayı aldığı an veri tabanına kaydetmeyi iptal edecek (Rollback).
+        
         raise HTTPException(
             status_code=500, 
             detail="Yapay zeka analiz sürecinde (LangGraph) beklenmeyen bir hata oluştu."

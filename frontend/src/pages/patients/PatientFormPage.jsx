@@ -24,7 +24,21 @@ const schema = z.object({
     .regex(/^\d+$/, 'Sadece rakam giriniz'),
   firstName: z.string().min(2, 'Ad en az 2 karakter olmalı'),
   lastName: z.string().min(2, 'Soyad en az 2 karakter olmalı'),
-  dateOfBirth: z.string().min(1, 'Doğum tarihi zorunludur'),
+  dateOfBirth: z
+    .string()
+    .min(1, 'Doğum tarihi zorunludur')
+    .refine((val) => {
+      const date = new Date(val)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      return date < today
+    }, 'Doğum tarihi bugün veya gelecekte olamaz')
+    .refine((val) => {
+      const date = new Date(val)
+      const minDate = new Date()
+      minDate.setFullYear(minDate.getFullYear() - 150)
+      return date > minDate
+    }, '150 yıldan eski bir doğum tarihi girilemez'),
   gender: z.string().min(1, 'Cinsiyet seçiniz'),
   bloodType: z.string().min(1, 'Kan grubu seçiniz'),
 })
