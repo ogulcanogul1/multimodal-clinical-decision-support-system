@@ -1,11 +1,11 @@
 <div align="center">
 
 # 🏥 Multimodal Klinik Karar Destek Sistemi (CDSS)
-### Çok Modlu Derin Öğrenme, Hibrit RAG ve Ajanik (Agentic) İş Akışlı Klinik Karar Destek Platformu
+### Çok Modlu Derin Öğrenme, Gelişmiş Hibrit RAG ve Ajanik (Agentic) İş Akışlı Klinik Karar Destek Platformu
 
 <p align="center">
   <b>Lisans Bitirme Tezi Projesi (Capstone Project)</b><br>
-  <i>Tıbbi Görüntüleme • Sayısal Laboratuvar Verileri • Klinik Anamnez • Kanıta Dayalı Literatür Taraması • Açıklanabilir Yapay Zeka (XAI)</i>
+  <i>Tıbbi Görüntüleme • Sayısal Laboratuvar Verileri • Klinik Anamnez • Kanıta Dayalı Gelişmiş Hibrit RAG • Açıklanabilir Yapay Zeka (XAI)</i>
 </p>
 
 <p align="center">
@@ -36,12 +36,17 @@
 - [Temel Mimari ve Servis Dağılımı](#-temel-mimari-ve-servis-dağılımı)
 - [Python AI Servisi & LangGraph Ajanik Akışı](#-python-ai-servisi--langgraph-ajanik-akışı)
   - [LangGraph İş Akış Şeması](#langgraph-iş-akış-şeması)
-  - [Çift Akışlı Hibrit RAG Mimarisi](#çift-akışlı-hibrit-rag-mimarisi)
-  - [Öz-Denetim ve Çelişki Çözücü Döngüsü](#öz-denetim-ve-çelişki-çözücü-döngüsü)
+  - [Uçtan Uca Sıra Diyagramı](#uçtan-uca-sıra-diyagramı)
+- [Gelişmiş RAG Mimarisi ve Retrieval Kalite Mühendisliği (Best Practices)](#-gelişmiş-rag-mimarisi-ve-retrieval-kalite-mühendisliği-best-practices)
+  - [1. Klinik Belge Arındırma ve Akıllı Ön İşleme (Ingestion Pipeline)](#1-klinik-belge-arındırma-ve-akıllı-ön-işleme-ingestion-pipeline)
+  - [2. İki Kademeli Huni: Dense + Sparse Hibrit Arama & RRF](#2-iki-kademeli-huni-dense--sparse-hibrit-arama--rrf)
+  - [3. Cross-Encoder ile Yeniden Sıralama (Reranking)](#3-cross-encoder-ile-yeniden-sıralama-reranking)
+  - [4. Canlı ve Filtreli Tıbbi Web Taraması (Parallel Live Retrieval)](#4-canlı-ve-filtreli-tıbbi-web-taraması-parallel-live-retrieval)
+  - [5. Düzeltici RAG (Corrective RAG - CRAG) ve Ajanik Öz-Denetim Döngüsü](#5-düzeltici-rag-corrective-rag---crag-ve-ajanik-öz-denetim-döngüsü)
 - [Derin Öğrenme ve Makine Öğrenimi Modelleri](#-derin-öğrenme-ve-makine-öğrenimi-modelleri)
   - [CDSS Modalite Router (ResNet-18)](#1-cdss-modalite-router-resnet-18)
   - [Akciğer Röntgeni Hiyerarşik Modeli (DenseNet-121)](#2-akciğer-röntgeni-hiyerarşik-modeli-densenet-121)
-  - [Beyin MR ve Göz Analizi (ResNet-50)](#3-beyin-mr-ve-göz-analiz-modelleri-resnet-50)
+  - [Beyin MR ve Göz Analiz Modelleri (ResNet-50)](#3-beyin-mr-ve-göz-analiz-modelleri-resnet-50)
   - [Laboratuvar Analiz Modelleri (XGBoost)](#4-laboratuvar-analiz-modelleri-xgboost)
 - [Açıklanabilir Yapay Zeka (XAI)](#-açıklanabilir-yapay-zeka-xai)
 - [Core-Backend Mimarisi (Spring Boot & PostgreSQL)](#-core-backend-mimarisi-spring-boot--postgresql)
@@ -60,11 +65,12 @@ Günümüz yapay zeka çözümlerinin büyük kısmı ya yalnızca görüntü s�
 1. **Halüsinasyon Riski:** Saf LLM'lerin klinik gerçeklikten kopuk veya hatalı tedavi protokolleri önerebilmesi.
 2. **Modaliteler Arası Uyuşmazlık:** Kan tahlili ile radyolojik bulgunun çeliştiği durumlarda deterministik bir mutabakat mekanizmasının olmaması.
 3. **Açıklanabilirlik Eksikliği:** Modelin lezyonu nerede gördüğünü (görsel kanıt) veya risk skorunu hangi biyobelirteç nedeniyle artırdığını (sayısal kanıt) hekime gösterememesi.
+4. **Zayıf Bilgi Getirme (Retrieval Failure):** Standart RAG sistemlerinin nadir tıbbi kısaltmaları kaçırması, PDF gürültülerini (içindekiler, sayfa numaraları) bağlama dahil etmesi ve klinik kanıt kalitesini denetlememesi.
 
 Bu lisans tezi çalışmasında; hekimin yerine karar veren değil, **hekimin karar sürecini kanıta dayalı ve açıklanabilir şekilde destekleyen çok modlu bir Klinik Karar Destek Sistemi (CDSS)** geliştirilmiştir. 
 
 > [!NOTE]  
-> **Projenin Temel Yaklaşımı:** Sistem; **PyTorch tabanlı derin öğrenme modellerini**, **XGBoost tabular modellerini**, **çift akışlı hibrit literatür taramasını (Pinecone Vektör + BM25 + BGE Reranker + Canlı Web Araştırması)** ve **LangGraph durum makinesini (StateGraph)** tek bir çatı altında birleştirir. Teşhis süreci, halüsinasyonu denetleyen **Self-Critique** ve modalite çelişkilerini çözen **Conflict Resolver** ajan döngüleri ile güvence altına alınmıştır.
+> **Projenin Temel Yaklaşımı:** Sistem; **PyTorch tabanlı derin öğrenme modellerini**, **XGBoost tabular modellerini**, **gelişmiş çift akışlı hibrit literatür taramasını (Pinecone Dense + BM25 Sparse + BGE Cross-Encoder Reranker + Canlı Hakemli Web Araştırması)** ve **LangGraph durum makinesini (StateGraph)** tek bir çatı altında birleştirir. Teşhis süreci, halüsinasyonu denetleyen **Self-Critique** ve modalite çelişkilerini çözen **Conflict Resolver** ajan döngüleri ile güvence altına alınmıştır.
 
 ---
 
@@ -87,7 +93,7 @@ Sistem, ayrık sorumluluk ilkesine (Separation of Concerns) uygun olarak **3 kat
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          PYTHON AI SERVİSİ (FastAPI + LangGraph)            │
-│   Multimodal Giriş • CNN & XGBoost • Hibrit RAG • XAI • Ajanik Muhakeme     │
+│   Multimodal Giriş • CNN & XGBoost • Gelişmiş RAG • XAI • Ajanik Muhakeme   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -95,16 +101,16 @@ Sistem, ayrık sorumluluk ilkesine (Separation of Concerns) uygun olarak **3 kat
 
 | Katman | Teknoloji | Port | Temel Sorumluluk |
 |---|---|---|---|
-| **Frontend** | React 19, Tailwind CSS v4, Lucide | `5173` | Hekim çalışma alanı; dinamik hasta profili, görsel & doküman analiz panelleri, kanıt kartları ve RLHF doktor geri bildirim arayüzü. |
-| **Core-Backend** | Spring Boot 4.0.3, Java 21, Hibernate 6 | `8080` | Domain modelleri (Doktor, Hasta, Konsültasyon), Spring Security JWT doğrulama, PostgreSQL JSONB veri kalıcılığı ve orkestrasyon. |
-| **Python AI** | FastAPI, LangGraph, PyTorch, XGBoost | `8000` | Görüntü ve dokümanların multimodal işlenmesi, hibrit RAG korpusu, Grad-CAM++ üretimi, LangGraph durum yönlendirmesi. |
-| **Veritabanı** | PostgreSQL 15 (Docker) | `5432` | İlişkisel veriler, tahlil sonuçları, model tahminleri ve JSONB formatında saklanan literatür atıfları (citations). |
+| **Frontend** | React 19, Tailwind CSS v4, Lucide | `5173` | Hekim çalışma alanı; dinamik hasta profili, görsel & doküman analiz panelleri, tıklanabilir kanıt kartları ve RLHF doktor geri bildirim arayüzü. |
+| **Core-Backend** | Spring Boot 4.0.3, Java 21, Hibernate 6 | `8080` | Domain modelleri (Doktor, Hasta, Konsültasyon), Spring Security JWT doğrulama, PostgreSQL JSONB veri kalıcılığı ve AI orkestrasyonu. |
+| **Python AI** | FastAPI, LangGraph, PyTorch, XGBoost | `8000` | Multimodal veri işleme, çift akışlı hibrit RAG, Grad-CAM++ üretimi, LangGraph durum yönlendirmesi. |
+| **Veritabanı** | PostgreSQL 15 (Docker) | `5432` | İlişkisel tablolar, tahlil sonuçları, model tahminleri ve JSONB formatında saklanan literatür atıfları (citations). |
 
 ---
 
 ## 🧠 Python AI Servisi & LangGraph Ajanik Akışı
 
-Sistemin karar motoru, LangGraph kütüphanesi üzerinde deterministik bir **Durum Makinesi (StateGraph)** olarak inşa edilmiştir. Akış, girdi türüne göre dallanır, superstep senkronizasyonu sağlar ve döngüsel düzeltme adımlarıyla güvenilir sonuç üretir.
+Sistemin karar motoru, LangGraph kütüphanesi üzerinde deterministik bir **Durum Makinesi (StateGraph)** olarak inşa edilmiştir. Akış, girdi türüne göre dinamik olarak dallanır, superstep senkronizasyonu sağlar ve döngüsel düzeltme adımlarıyla güvenilir sonuç üretir.
 
 ### LangGraph İş Akış Şeması
 
@@ -129,15 +135,17 @@ Aşağıdaki görsel, derlenen LangGraph durum makinesinin (`StateGraph`) gerçe
    - **Lab Analyzer:** İlgili hastalık için eğitilmiş XGBoost uzman modelini çalıştırır ve tahlil referans aralığı anomalilerini (High/Low) filtreler.
 4. **Adaptive Fusion (Adaptif Füzyon Düğümü):**
    Farklı modalitelerden gelen bulguları (hasta anamnezi, yaş, cinsiyet, şikayet, kronik hastalıklar + CNN görsel tahminleri + XGBoost laboratuvar olasılıkları + referans dışı anomaliler) bir araya getirerek dinamik klinik bağlamı oluşturur.
-5. **Dual-Stream Hybrid RAG (Çift Akışlı Hibrit Araştırma):**
-   - **Query Optimizer:** Tıbbi NLP genişletmesi ile klinik terminolojiyi zenginleştirir.
+5. **Dual-Stream Hybrid RAG (Gelişmiş Çift Akışlı Araştırma):**
+   - **Query Optimizer:** Tıbbi NLP genişletmesi ile hekim sorusunu hastanın bulgularıyla zenginleştirir.
    - **Hybrid Search & Web Research:** Yerel vektör/anahtar kelime tabanı ile canlı medikal literatürü paralel olarak tarar.
-   - **Knowledge Synthesis:** İki akıştan gelen bilgileri çapraz denetler, birleştirir ve her bilgi parçacığına doğrulanabilir kaynak kimliği (`[Ref-N]`) atar.
+   - **Knowledge Synthesis:** İki akıştan gelen bilgileri birleştirir ve her bilgi parçacığına doğrulanabilir kaynak kimliği (`[Ref-N]`) atar.
    - **Retrieval Grader:** Getirilen dökümanların klinik soruyla örtüşme kalitesini puanlar. Eşik değerin altındaysa sorguyu dönüştürüp yeniden dener (*Maksimum 2 retry*).
 6. **XAI Generator & Diagnostic Agent (Başhekim Ajanı):**
    Görsel bulgular için **Grad-CAM++** ısı haritası ve laboratuvar için **Feature Importance** çıktısı hazırlanır. Başhekim LLM'i sentezlenen veriler ve tıbbi kanıtlar eşliğinde konsültasyon raporunu oluşturur.
 7. **Self-Critique & Conflict Resolver (Öz-Denetim Döngüsü):**
    Oluşturulan rapor, multimodal bulgularla çelişki veya halüsinasyon riski açısından taranır. Tutarsızlık varsa `Conflict Resolver` devreye girerek teşhis ajanını revizyona yönlendirir (*Maksimum 2 retry limitli emniyet supabı*).
+
+### Uçtan Uca Sıra Diyagramı
 
 ```mermaid
 sequenceDiagram
@@ -166,39 +174,95 @@ sequenceDiagram
 
 ---
 
-## 📚 Çift Akışlı Hibrit RAG Mimarisi
+## 📚 Gelişmiş RAG Mimarisi ve Retrieval Kalite Mühendisliği (Best Practices)
 
-Sistemin medikal literatür araştırma katmanı, saf anlamsal aramanın yetersiz kaldığı nadir tıbbi terimleri ve spesifik ilaç isimlerini yakalamak için **Hibrit Bilgi Getirme (Hybrid Retrieval)** prensibiyle tasarlanmıştır.
+Sıradan bir RAG pipeline'ı, medikal alanda yetersiz kalır; çünkü tıp metinleri karmaşık kısaltmalar, sayısal eşikler ve spesifik ilaç isimleri içerir. Bu projede literatür getirme (retrieval) kalitesini maksimize etmek adına sektörde kabul görmüş **ileri düzey RAG best practice'leri** uygulanmıştır:
 
 ```
-                         ┌─────────────────────────────┐
-                         │   Query Optimizer (LLM)     │
-                         └──────────────┬──────────────┘
-                                        │
-                    ┌───────────────────┴───────────────────┐
-                    ▼                                       ▼
-     ┌─────────────────────────────┐         ┌─────────────────────────────┐
-     │   Yerel Kılavuz Korpusu     │         │   Canlı Web Literatürü      │
-     │   Pinecone Vektör (Dense)   │         │   Tavily Search API         │
-     │            +                │         │   Filtre: PubMed, NIH, Mayo │
-     │   BM25Okapi (Sparse)        │         └──────────────┬──────────────┘
-     │            +                │                        │
-     │   BGE Reranker v2-m3        │                        │
-     └──────────────┬──────────────┘                        │
-                    │                                       │
-                    └───────────────────┬───────────────────┘
-                                        ▼
-                         ┌─────────────────────────────┐
-                         │ Knowledge Synthesis Node    │
-                         │ [Ref-1], [Ref-2] Atıf Eşleme│
-                         └─────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                            1. DUAL SEARCH GENERATION (Query Optimizer)                      │
+│      Girdi: Doktor Mesajı + Hastanın Klinik Anomalileri (örn: Pnömoni + Yüksek Glukoz)      │
+└──────────────────────────────┬──────────────────────────────────────────────┬───────────────┘
+                               │                                              │
+                [Dense + Sparse Local Query]                   [3x Parallel 2026 Web Queries]
+                               ▼                                              ▼
+┌─────────────────────────────────────────────────────────────┐┌──────────────────────────────┐
+│                  2. YEREL HİBRİT ARAMA                      ││   3. CANLI MEDİKAL WEB       │
+│  ┌───────────────────────┐   ┌───────────────────────────┐  ││   (ThreadPoolExecutor)       │
+│  │ Pinecone Dense Vector │   │ BM25Okapi Sparse Keyword  │  ││   PubMed / NIH, Mayo Clinic, │
+│  │ (MiniLM-L6-v2) Top 30 │   │ (Sanitized Token) Top 30  │  ││   The Lancet, Nature Med     │
+│  └───────────┬───────────┘   └─────────────┬─────────────┘  │└──────────────┬───────────────┘
+│              │                             │                │               │
+│              └──────────────┬──────────────┘                │               │
+│                             ▼                               │               │
+│        Reciprocal Rank Fusion (RRF, k=60) → Top 10          │               │
+│                             ▼                               │               │
+│    BAAI/bge-reranker-v2-m3 Cross-Encoder → Top 5 Aday       │               │
+└─────────────────────────────┬───────────────────────────────┘               │
+                              │                                               │
+                              └───────────────────────┬───────────────────────┘
+                                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                       4. KNOWLEDGE SYNTHESIS & ATIF ENJEKSİYONU                             │
+│                  Kaynak Eşleme • [[SOURCE ID: Ref-N]] Enjeksiyonu                           │
+└─────────────────────────────────────────────┬───────────────────────────────────────────────┘
+                                              ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                       5. CORRECTIVE RAG (Retrieval Quality Grader)                          │
+│               Klinik Uygunluk Puanlaması (Binary Yes/No) • Retry (Max 2)                    │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Vektör Taraması (Dense):** `sentence-transformers/all-MiniLM-L6-v2` ile 1536/384 boyutlu anlamsal temsil ve Pinecone vektör veritabanı.
-2. **Anahtar Kelime Taraması (Sparse):** Tıbbi kısaltmalar ve sayısal parametreler için `rank_bm25` (BM25Okapi) algoritması.
-3. **Yeniden Sıralama (Reranking):** İlk aşamada getirilen aday dokümanlar `BAAI/bge-reranker-v2-m3` Cross-Encoder modeli ile klinik uygunluklarına göre yeniden sıralanır.
-4. **Canlı Tıbbi Web Taraması:** Tavily API aracılığıyla hakemli tıp portalları (*PubMed, NIH, Mayo Clinic*) taranarak güncel rehberler sisteme dahil edilir.
-5. **Kaynak Enjeksiyonu:** Sentezlenen tüm bilgiler doküman kimlikleri ile eşleştirilerek hekime tıklanabilir kaynak olarak sunulur.
+### 1. Klinik Belge Arındırma ve Akıllı Ön İşleme (Ingestion Pipeline)
+- **Geometrik Bounding Box ve Marjin Kırpma:** PyMuPDF (`fitz`) ile sayfalar blok koordinatlarına göre taranır. Sayfa yüksekliğinin üst `%6`'sı (running header), alt `%8`'i (sayfa numaraları, footer) ve kenar boşlukları (`%5` marjin) geometrik olarak kırpılarak şablon artıkları tamamen elenir.
+- **TOC & Kaynakça Sayfası Filtreleme:** Sayfa başlıklarında *"table of contents"*, *"index"*, *"references"*, *"bibliography"* anahtar kelimeleri tespit edildiğinde bu sayfalar vektör veritabanına sokulmadan doğrudan atlanır.
+- **De-hyphenation (Satır Sonu Tire Temizliği):** Satır sonundaki tirelemeler (`re.sub(r'-\s+', '', text)`) birleştirilerek *"hyper- tension"* gibi kritik medikal terimlerin parçalanması önlenir; anlamsal embedding doğruluğu korunur.
+- **Küratörlü Klinik Kütüphane (Page Whitelisting):** Kitapların tamamı yerine yalnızca hakemli kılavuz bölümleri indekslenmiştir:
+  - *ADA Standards of Care 2026 (Diyabet)*
+  - *KDIGO 2024 Guidelines (Böbrek)*
+  - *ESC 2024 Guidelines (Kardiyovasküler)*
+  - *GINA Summary Guide 2024 (Astım)*
+  - *NICE Guidelines (Anemi & KBH)*
+  - *Oxford Handbook of Clinical Medicine & Harrison's Manual of Medicine*
+- **Kelime Sınırına Duyarlı Akıllı Parçalama (Boundary-Aware Chunking):** `FixedSizeSplitter`, metni rastgele karakterden kesmek yerine geriye doğru son boşluk karakterini (`rfind(' ')`) tespit eder. Tıbbi cümle ve terim bütünlüğü korunur; `chunk_overlap` ile bağlam kopmaları engellenir.
+
+---
+
+### 2. İki Kademeli Huni: Dense + Sparse Hibrit Arama & RRF
+- **Çift Temsil (Dense + Sparse):**
+  - **Dense (Anlamsal):** `sentence-transformers/all-MiniLM-L6-v2` ile 384 boyutlu vektör uzayında anlamsal benzerlik.
+  - **Sparse (Anahtar Kelime):** Tıbbi kısaltmalar, dozajlar ve özel parametreler için noktalama işaretlerinden arındırılmış `BM25Okapi` algoritması.
+- **Reciprocal Rank Fusion (RRF, k=60):** İki farklı skorlama mekanizmasından gelen sıralamalar, standart literatür sabiti $k=60$ kullanılarak harmanlanır:
+  $$\text{RRF Score}(d) = \sum_{m \in \{\text{Dense, Sparse}\}} \frac{1}{60 + \text{Rank}_m(d)}$$
+- **Geniş Tarama (Broad Retrieval):** Pinecone'dan en iyi 30, BM25'ten en iyi 30 olmak üzere toplam 60 aday çekilir ve RRF ile ilk 10'a elenir.
+- **Asenkron Batching & RAM Caching (Singleton):** Vektör indeksleme 150'lik asenkron batch'lerle (`async_req=True`) yapılır. Uygulama ayağa kalkarken BM25 indeksi diskteki pickle dosyasından, Cross-Encoder ve Embedding modelleri ise RAM'e yüklenerek ilk istek gecikmesi sıfırlanır.
+
+---
+
+### 3. Cross-Encoder ile Yeniden Sıralama (Reranking)
+Bi-Encoder modelleri soru ile dokümanı ayrı ayrı vektörleştirirken, Cross-Encoder modeli `[Soru, Doküman]` çiftini tek bir metin gibi tam self-attention katmanından geçirir:
+- **Model:** `BAAI/bge-reranker-v2-m3`
+- RRF'ten çıkan 10 aday doküman, hekimin sorgusuna göre anlamsal alaka puanı (`reranker_score`) ile yeniden derecelendirilir ve yalnızca **en yüksek puanlı ilk 5 klinik doküman** seçilir.
+
+---
+
+### 4. Canlı ve Filtreli Tıbbi Web Taraması (Parallel Live Retrieval)
+- **Güvenilir Alan Adı Beyaz Listesi (Domain Whitelisting):** Genel internet gürültüsünden kaçınmak için arama alanı yalnızca hakemli tıp portallarıyla sınırlandırılmıştır:
+  - `ncbi.nlm.nih.gov` (PubMed / NIH)
+  - `mayoclinic.org` & `clevelandclinic.org`
+  - `hopkinsmedicine.org` (Johns Hopkins)
+  - `thelancet.com` & `nature.com` (Nature Medicine)
+  - `medscape.com`
+- **ThreadPoolExecutor ile Paralel Çalışma:** Query Optimizer tarafından üretilen 3 farklı güncel kılavuz sorgusu, thread havuzu aracılığıyla **eşzamanlı (paralel)** taranır. Web arama gecikmesi 3 kat azaltılır.
+- **Web Doküman Reranking:** İnternetten çekilen ham web metinleri de doğrudan LLM'e verilmez; BGE Cross-Encoder filtresinden geçirilerek yalnızca en alakalı 3 web kesiti alınır.
+
+---
+
+### 5. Düzeltici RAG (Corrective RAG - CRAG) ve Ajanik Öz-Denetim Döngüsü
+- **Klinik Bağlam Genişletmeli Sorgu Optimizasyonu (Context-Aware Query Rewriting):** Hekim yalnızca *"Bu hastaya ne başlamalıyız?"* yazsa bile, `Query Optimizer` hastanın bağlamındaki anomalileri (örneğin *Diyabet + Pnömoni*) otomatik olarak sorguya enjekte eder.
+- **Retrieval Grader (Sıkı Medikal İkili Puanlayıcı):** Sentezlenen dokümanlar Başhekim ajanına sunulmadan önce `retrieval_grader` düğümünde değerlendirilir. Her doküman klinik soruya yanıt verip vermediğine göre ikili (`binary_score: yes/no`) olarak denetlenir.
+- **Self-Correction Retry Döngüsü:** Eğer getirilen dokümanlar kalite eşiğini geçemezse akış kesilmez; sorgu dönüştürülerek pipeline yeniden tetiklenir (*Maksimum 2 retry emniyet supabı*).
+- **Kaynak Takibi ve Atıf Enjeksiyonu (Citation Injection):** `Knowledge Synthesis` aşamasında her dokümana `[[SOURCE ID: Ref-N]]` etiketi gömülür. LLM yanıtında her klinik iddiayı bu kaynak kimlikleriyle atıflamak zorundadır; böylece hekim UI üzerinde tıklanabilir kanıt kartlarına erişir.
 
 ---
 
@@ -286,31 +350,37 @@ Gatekeeper aşamasını geçen görüntüler, **142,279 eğitim görüntüsü** 
 ---
 
 ### 4. Laboratuvar Analiz Modelleri (XGBoost)
-Sayısal biyokimya ve hematoloji testleri, ilgili klinik parametreler üzerinde eğitilmiş XGBoost sınıflandırıcıları ile değerlendirilir. Her model için zorunlu kılınan hayati değişkenler (`MANDATORY_FEATURES`) ve karar ağırlıkları belirlenmiştir:
+Sayısal biyokimya ve hematoloji testleri, ilgili klinik parametreler üzerinde eğitilmiş güncel XGBoost sınıflandırıcıları ile değerlendirilir. Her model için zorunlu kılınan hayati değişkenler (`MANDATORY_FEATURES`) ve karar ağırlıkları belirlenmiştir:
 
 <div align="center">
   <table>
     <tr>
-      <td align="center"><b>Diyabet Modeli Feature Importance</b></td>
-      <td align="center"><b>Kardiyovasküler Risk Feature Importance</b></td>
+      <td align="center"><b>Diyabet Modeli Karar Ağırlıkları</b></td>
+      <td align="center"><b>Kardiyovasküler Risk Karar Ağırlıkları</b></td>
     </tr>
     <tr>
       <td><img src="assets/images/diabetes_feature_importance.png" width="400" alt="Diabetes Features"/></td>
       <td><img src="assets/images/cardiovascular_feature_importance.png" width="400" alt="Cardiovascular Features"/></td>
     </tr>
     <tr>
-      <td align="center"><b>Kronik Böbrek (KBH) Feature Importance</b></td>
-      <td align="center"><b>Karaciğer Hastalığı Feature Importance</b></td>
+      <td align="center"><b>Kronik Böbrek Hastalığı (KBH)</b></td>
+      <td align="center"><b>Karaciğer Hastalığı Belirteçleri</b></td>
     </tr>
     <tr>
       <td><img src="assets/images/kidney_feature_importance.png" width="400" alt="Kidney Features"/></td>
       <td><img src="assets/images/liver_feature_importance.png" width="400" alt="Liver Features"/></td>
     </tr>
+    <tr>
+      <td colspan="2" align="center"><b>Anemi Alt Tipleri (9 Sınıf) Özellik Ağırlıkları</b></td>
+    </tr>
+    <tr>
+      <td colspan="2" align="center"><img src="assets/images/anemia_feature_importance.png" width="500" alt="Anemia Features"/></td>
+    </tr>
   </table>
-  <p><i>Şekil 4: XGBoost Laboratuvar Modellerine Ait Klinik Özellik Önem Sıralamaları (Feature Importance)</i></p>
+  <p><i>Şekil 4: Güncellenmiş XGBoost Laboratuvar Modellerine Ait Klinik Özellik Önem Sıralamaları (Feature Importance)</i></p>
 </div>
 
-- **Anemi Modeli (9 Sınıf):** Hemoglobin (HGB), MCHC ve MCH parametrelerine dayalı olarak Demir Eksikliği, Makrositik, Normositik, Hipokromik veya Trombositopeni alt tiplerini belirler (`anemia_feature_importance.png`).
+- **Anemi Modeli (9 Sınıf):** Hemoglobin (HGB), MCHC ve MCH parametrelerine dayalı olarak Demir Eksikliği, Makrositik, Normositik, Hipokromik veya Trombositopeni alt tiplerini belirler.
 
 ---
 
@@ -379,7 +449,6 @@ docker compose up -d
 ### 2. Python AI Servisini Hazırlama ve Başlatma
 ```bash
 # Proje kök dizininde:
-# Sanal ortamı oluşturun ve bağımlılıkları yükleyin
 uv sync
 # veya
 pip install -r requirements.txt
@@ -400,7 +469,6 @@ python -m src.api.main
 ### 3. Core-Backend Servisini Başlatma
 ```bash
 cd core-backend
-# Maven wrapper ile Spring Boot uygulamasını başlatın (Port: 8080)
 ./mvnw.cmd spring-boot:run
 ```
 *(İlk açılışta `DatabaseSeeder` gerekli temel medikal sözlük verilerini otomatik olarak yükleyecektir).*
@@ -421,7 +489,8 @@ Sektöre adım atacak bir mühendis perspektifiyle, bu projede elde edilen deney
 
 1. **Çoklu Modalite Senkronizasyonu:** Farklı hızlarda ve adımlarda çalışan derin öğrenme kolları (CNN) ile metin madenciliği kollarının (PyMuPDF + LLM) LangGraph üzerinde tampon düğümler (`image_sync`) aracılığıyla senkronize edilmesi mimari kararlılığı ciddi ölçüde artırmıştır.
 2. **Klinik Güvenlik Supabı:** Bir modelin yüksek doğruluğa sahip olması tek başına yetersizdir; tıp bilişiminde asıl başarı **yanlış negatif oranını düşürmektir**. Akciğer taramasında `Max F2` (%98.61 Recall) tercihinin yapılması bu bilincin sonucudur.
-3. **Planlanan Geliştirmeler (Technical Debt):**
+3. **Retrieval Kalite Mühendisliği:** Saf anlamsal vektör aramasının nadir tıbbi terminolojide tıkandığı gözlemlenmiş; BM25 ve Cross-Encoder (Reranker) hibrit mimarisinin getirdiği klinik alaka düzeyinin çıktıyı doğrudan iyileştirdiği kanıtlanmıştır.
+4. **Planlanan Geliştirmeler (Technical Debt):**
    - Disk üzerinde hazır bulunan tiroit uzman modelinin (`Thyroid_expert_model.joblib`) tahlil işleme hattına dinamik olarak entegre edilmesi.
    - Frontend API adresinin harici ortam değişkenlerine (`VITE_API_URL`) tam taşınması.
    - Grad-CAM heatmap üretiminin görüntü yükleme anında asenkron kuyruk yapısına (Celery/RabbitMQ) devredilmesi.

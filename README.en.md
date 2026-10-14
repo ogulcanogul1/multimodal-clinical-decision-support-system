@@ -1,11 +1,11 @@
 <div align="center">
 
 # 🏥 Multimodal Clinical Decision Support System (CDSS)
-### An Agentic Clinical Decision Support Platform Powered by Multimodal Deep Learning, Hybrid RAG, and Explainable AI (XAI)
+### An Agentic Clinical Decision Support Platform Powered by Multimodal Deep Learning, Advanced Hybrid RAG, and Explainable AI (XAI)
 
 <p align="center">
   <b>Undergraduate Capstone / Thesis Project</b><br>
-  <i>Medical Imaging • Numerical Laboratory Reports • Clinical Anamnesis • Evidence-Based Literature Retrieval • Explainable AI (XAI)</i>
+  <i>Medical Imaging • Numerical Laboratory Reports • Clinical Anamnesis • Evidence-Based Advanced Hybrid RAG • Explainable AI (XAI)</i>
 </p>
 
 <p align="center">
@@ -36,8 +36,13 @@
 - [System Architecture & Distributed Services](#-system-architecture--distributed-services)
 - [Python AI Service & LangGraph Agentic Pipeline](#-python-ai-service--langgraph-agentic-pipeline)
   - [LangGraph Workflow Diagram](#langgraph-workflow-diagram)
-  - [Dual-Stream Hybrid RAG Architecture](#dual-stream-hybrid-rag-architecture)
-  - [Self-Critique & Conflict Resolver Loop](#self-critique--conflict-resolver-loop)
+  - [End-to-End Sequence Diagram](#end-to-end-sequence-diagram)
+- [Advanced RAG Architecture & Retrieval Quality Engineering (Best Practices)](#-advanced-rag-architecture--retrieval-quality-engineering-best-practices)
+  - [1. Clinical Document Ingestion & Sanitization](#1-clinical-document-ingestion--sanitization)
+  - [2. Two-Stage Funnel: Dense + Sparse Hybrid Search & RRF](#2-two-stage-funnel-dense--sparse-hybrid-search--rrf)
+  - [3. Cross-Encoder Deep Reranking](#3-cross-encoder-deep-reranking)
+  - [4. Filtered Live Medical Web Retrieval (Parallel Stream)](#4-filtered-live-medical-web-retrieval-parallel-stream)
+  - [5. Corrective RAG (CRAG) & Agentic Quality Control](#5-corrective-rag-crag--agentic-quality-control)
 - [Deep Learning & Machine Learning Models](#-deep-learning--machine-learning-models)
   - [CDSS Modality Router (ResNet-18)](#1-cdss-modality-router-resnet-18)
   - [Hierarchical Chest X-Ray Models (DenseNet-121)](#2-hierarchical-chest-x-ray-models-densenet-121)
@@ -60,11 +65,12 @@ Most contemporary medical AI applications either rely on **unimodal standalone m
 1. **Hallucination Risk:** Unconstrained LLMs generating non-standard or medically hazardous treatment recommendations.
 2. **Cross-Modality Inconsistency:** The absence of a deterministic reconciliation mechanism when laboratory tests and radiological findings disagree.
 3. **Lack of Explainability:** Inability to pinpoint the anatomical lesion on scans (visual evidence) or explain which biomarkers drove the diagnostic probability (numerical attribution).
+4. **Retrieval Degradation in Standard RAG:** Missing dense abbreviations or specific drug dosages due to naive embedding approaches, alongside context pollution from PDF table of contents, headers, and footers.
 
 This undergraduate capstone project introduces a **multimodal, verifiable Clinical Decision Support System (CDSS)** designed not to replace physicians, but to empower clinical decision-making with explainable, evidence-backed recommendations.
 
 > [!NOTE]  
-> **Core Engineering Philosophy:** The platform orchestrates **PyTorch deep learning vision models**, **XGBoost tabular classifiers**, **dual-stream hybrid literature retrieval (Pinecone Dense Vector + BM25 Sparse + BGE Cross-Encoder Reranker + Live Web Research)**, and a **LangGraph cyclical state machine**. Clinical safety is strictly reinforced through iterative **Self-Critique** and **Conflict Resolver** agent feedback loops.
+> **Core Engineering Philosophy:** The platform orchestrates **PyTorch deep learning vision models**, **calibrated XGBoost tabular classifiers**, **dual-stream hybrid literature retrieval (Pinecone Dense Vector + BM25 Sparse + BGE Cross-Encoder Reranker + Live Filtered Web Retrieval)**, and a **LangGraph cyclical state machine**. Clinical safety is strictly reinforced through iterative **Self-Critique** and **Conflict Resolver** agent feedback loops.
 
 ---
 
@@ -87,7 +93,7 @@ Built according to the principle of separation of concerns, the system features 
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          PYTHON AI SERVICE (FastAPI + LangGraph)            │
-│   Multimodal Perception • CNN & XGBoost • Hybrid RAG • XAI • Reasoning      │
+│   Multimodal Perception • CNN & XGBoost • Advanced RAG • XAI • Reasoning    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -128,12 +134,14 @@ The rendered topology of the compiled LangGraph state machine is shown below:
    - **Lab Analyzer:** Runs the corresponding XGBoost model and filters high/low out-of-reference biomarker anomalies.
 4. **Adaptive Fusion Node:** Combines multimodal findings (patient demographics, chief complaint, chronic illnesses, allergies + CNN visual findings + XGBoost model risks + out-of-bounds lab parameters) into a coherent clinical context.
 5. **Dual-Stream Hybrid RAG:**
-   - **Query Optimizer:** Expands clinical queries with standardized medical taxonomy.
+   - **Query Optimizer:** Expands clinical queries with standardized medical taxonomy and patient findings.
    - **Hybrid Search & Web Research:** Queries local vector/sparse indexes and PubMed/NIH web portals in parallel.
    - **Knowledge Synthesis:** Cross-references retrieved passages and injects citation tokens (`[Ref-N]`).
    - **Retrieval Grader:** Evaluates whether retrieved evidence sufficiently answers the clinical query (*Max 2 retries*).
 6. **XAI Generator & Diagnostic Agent:** Produces a **Grad-CAM++** visual heatmap and tabular **Feature Importance** rankings. The Chief Medical Officer agent synthesizes findings into a formal report.
 7. **Self-Critique & Conflict Resolver:** Verifies report consistency across all modalities. In case of conflict or hallucination, it triggers the `Conflict Resolver` to instruct the diagnostic agent to revise its reasoning (*Safety capped at 2 iterations*).
+
+### End-to-End Sequence Diagram
 
 ```mermaid
 sequenceDiagram
@@ -162,38 +170,95 @@ sequenceDiagram
 
 ---
 
-## 📚 Dual-Stream Hybrid RAG Architecture
+## 📚 Advanced RAG Architecture & Retrieval Quality Engineering (Best Practices)
 
-Pure semantic vector search frequently overlooks dense clinical terms, acronyms, or specific drug dosages. This system implements a **Reciprocal Rank Fusion (RRF)** hybrid architecture:
+Standard vector search struggles with medical queries due to dense acronyms, numerical thresholds, and specific drug dosages. This system implements an advanced, production-grade **Retrieval-Augmented Generation (RAG)** pipeline:
 
 ```
-                         ┌─────────────────────────────┐
-                         │   Query Optimizer (LLM)     │
-                         └──────────────┬──────────────┘
-                                        │
-                    ┌───────────────────┴───────────────────┐
-                    ▼                                       ▼
-     ┌─────────────────────────────┐         ┌─────────────────────────────┐
-     │   Local Guideline Corpus    │         │   Live Medical Literature   │
-     │   Pinecone Dense Vector     │         │   Tavily Search API         │
-     │            +                │         │   Filters: PubMed, NIH, Mayo│
-     │   BM25Okapi (Sparse)        │         └──────────────┬──────────────┘
-     │            +                │                        │
-     │   BGE Reranker v2-m3        │                        │
-     └──────────────┬──────────────┘                        │
-                    │                                       │
-                    └───────────────────┬───────────────────┘
-                                        ▼
-                         ┌─────────────────────────────┐
-                         │ Knowledge Synthesis Node    │
-                         │ [Ref-1], [Ref-2] Tagging    │
-                         └─────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                            1. DUAL SEARCH GENERATION (Query Optimizer)                      │
+│      Input: Doctor Prompt + Patient Anomalies (e.g., Pneumonia + High Fasting Glucose)      │
+└──────────────────────────────┬──────────────────────────────────────────────┬───────────────┘
+                               │                                              │
+                [Dense + Sparse Local Query]                   [3x Parallel 2026 Web Queries]
+                               ▼                                              ▼
+┌─────────────────────────────────────────────────────────────┐┌──────────────────────────────┐
+│                  2. LOCAL HYBRID RETRIEVAL                  ││   3. LIVE MEDICAL WEB        │
+│  ┌───────────────────────┐   ┌───────────────────────────┐  ││   (ThreadPoolExecutor)       │
+│  │ Pinecone Dense Vector │   │ BM25Okapi Sparse Keyword  │  ││   PubMed / NIH, Mayo Clinic, │
+│  │ (MiniLM-L6-v2) Top 30 │   │ (Sanitized Token) Top 30  │  ││   The Lancet, Nature Med     │
+│  └───────────┬───────────┘   └─────────────┬─────────────┘  │└──────────────┬───────────────┘
+│              │                             │                │               │
+│              └──────────────┬──────────────┘                │               │
+│                             ▼                               │               │
+│        Reciprocal Rank Fusion (RRF, k=60) → Top 10          │               │
+│                             ▼                               │               │
+│    BAAI/bge-reranker-v2-m3 Cross-Encoder → Top 5 Docs       │               │
+└─────────────────────────────┬───────────────────────────────┘               │
+                              │                                               │
+                              └───────────────────────┬───────────────────────┘
+                                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                       4. KNOWLEDGE SYNTHESIS & CITATION INJECTION                           │
+│                 Source Alignment • [[SOURCE ID: Ref-N]] Attribution                         │
+└─────────────────────────────────────────────┬───────────────────────────────────────────────┘
+                                              ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                       5. CORRECTIVE RAG (Retrieval Quality Grader)                          │
+│               Clinical Relevancy Evaluation (Binary Yes/No) • Retry (Max 2)                 │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Dense Semantic Retrieval:** Embeddings computed via `sentence-transformers/all-MiniLM-L6-v2` against Pinecone vector database.
-- **Sparse Keyword Matching:** Exact match retrieval via `rank_bm25` (BM25Okapi).
-- **Cross-Encoder Reranking:** Candidate passages re-scored using `BAAI/bge-reranker-v2-m3`.
-- **Live Medical Web Search:** Verified evidence retrieved from PubMed, NIH, and Mayo Clinic via Tavily API.
+### 1. Clinical Document Ingestion & Sanitization
+- **Geometric Bounding Box & Margin Cropping:** Using PyMuPDF (`fitz`), blocks are filtered by spatial coordinates. Running headers (`top 6%`), page numbers/footers (`bottom 8%`), and side margins (`5%`) are geometrically clipped to purge template artifacts.
+- **TOC & Front-Matter Elimination:** Pages containing keywords like *"table of contents"*, *"index"*, *"references"*, or *"bibliography"* in their headers are dropped prior to chunking.
+- **De-hyphenation & Whitespace Sanitization:** Broken end-of-line tokens (`re.sub(r'-\s+', '', text)`) are concatenated into unified medical terms (e.g., *"hyper- tension"* $\rightarrow$ *"hypertension"*), preserving embedding integrity.
+- **Targeted Clinical Whitelisting:** Ingestion is restricted to authoritative guideline chapters:
+  - *ADA Standards of Care 2026 (Diabetes)*
+  - *KDIGO 2024 Guidelines (Chronic Kidney Disease)*
+  - *ESC 2024 Guidelines (Cardiovascular & Hypertension)*
+  - *GINA Summary Guide 2024 (Asthma Management)*
+  - *NICE Guidelines (Anemia in CKD)*
+  - *Oxford Handbook of Clinical Medicine & Harrison's Manual of Medicine*
+- **Boundary-Aware Semantic Chunking:** `FixedSizeSplitter` splits text at natural word boundaries (`rfind(' ')`) rather than blunt character counts, retaining complete clinical terminology. Chunk overlap ensures semantic continuity across chunk boundaries.
+
+---
+
+### 2. Two-Stage Funnel: Dense + Sparse Hybrid Search & RRF
+- **Dual Representation (Dense + Sparse):**
+  - **Dense (Semantic):** 384-dimensional semantic embeddings computed via `sentence-transformers/all-MiniLM-L6-v2` against Pinecone.
+  - **Sparse (Exact Keyword):** `BM25Okapi` with specialized regex punctuation tokenization to catch rare pharmacology names and exact numerical parameters.
+- **Reciprocal Rank Fusion (RRF, k=60):** Both candidate sets are harmonized using standard rank reciprocal weighting:
+  $$\text{RRF Score}(d) = \sum_{m \in \{\text{Dense, Sparse}\}} \frac{1}{60 + \text{Rank}_m(d)}$$
+- **Broad Retrieval Candidate Pool:** Retrieves top 30 from Pinecone and top 30 from BM25, condensing into top 10 unique candidates.
+- **Asynchronous Batching & Singleton Cache:** Ingestion executes 150-record asynchronous batches (`async_req=True`). Vector store, embedding services, and BM25 index are pre-warmed in RAM upon service startup, providing sub-second query latency.
+
+---
+
+### 3. Cross-Encoder Deep Reranking
+While Bi-Encoders encode query and document independently, Cross-Encoders pass `[Query, Document]` pairs simultaneously through full cross-attention layers:
+- **Model:** `BAAI/bge-reranker-v2-m3`
+- The top 10 RRF candidates are scored by clinical relevance (`reranker_score`), filtering down to the **top 5 most informative passages**.
+
+---
+
+### 4. Filtered Live Medical Web Retrieval (Parallel Stream)
+- **Domain Whitelisting:** Search scopes are strictly bounded to authoritative peer-reviewed medical portals:
+  - `ncbi.nlm.nih.gov` (PubMed / NIH)
+  - `mayoclinic.org` & `clevelandclinic.org`
+  - `hopkinsmedicine.org` (Johns Hopkins Medicine)
+  - `thelancet.com` & `nature.com` (Nature Medicine)
+  - `medscape.com`
+- **ThreadPoolExecutor Concurrency:** Three targeted queries generated by the Query Optimizer are queried concurrently via worker threads, reducing web latency by 3x.
+- **Web Content Reranking:** Raw web snippets are passed through the BGE Cross-Encoder to extract only the top 3 highest-quality web contexts.
+
+---
+
+### 5. Corrective RAG (CRAG) & Agentic Quality Control
+- **Context-Aware Query Expansion:** When a physician enters a brief query like *"What is the recommended treatment?"*, the `Query Optimizer` injects active patient anomalies (e.g., *Pneumonia in diabetic patient*) to formulate specific clinical queries.
+- **Retrieval Grader (Binary Clinical Scoring):** Before passing evidence to the Chief Medical Officer agent, each retrieved passage is evaluated individually against the clinical query (`binary_score: yes/no`).
+- **Self-Correction Retry Loop:** If passages fail the relevance grade, the graph increments the retry counter and loops back to query transformation (*Safety budget: maximum 2 retries*).
+- **Source Tracking & Citation Injection:** Every document is prepended with `[[SOURCE ID: Ref-N]]`. The LLM is constrained to ground all factual claims in these citation tags, rendering clickable evidence cards in the frontend.
 
 ---
 
@@ -301,11 +366,17 @@ Numerical biochemistry and hematology reports are parsed and evaluated using spe
       <td><img src="assets/images/kidney_feature_importance.png" width="400" alt="Kidney Features"/></td>
       <td><img src="assets/images/liver_feature_importance.png" width="400" alt="Liver Features"/></td>
     </tr>
+    <tr>
+      <td colspan="2" align="center"><b>Anemia Subtypes (9 Classes) Feature Attribution</b></td>
+    </tr>
+    <tr>
+      <td colspan="2" align="center"><img src="assets/images/anemia_feature_importance.png" width="500" alt="Anemia Features"/></td>
+    </tr>
   </table>
-  <p><i>Figure 4: Key Feature Importance Attributions for Tabular Medical Models</i></p>
+  <p><i>Figure 4: Key Feature Importance Attributions for Production XGBoost Medical Models</i></p>
 </div>
 
-- **Anemia Classifier (9 Classes):** Analyzes HGB, MCHC, and MCH to differentiate between Iron Deficiency, Macrocytic, Normocytic, Hypochromic, and Thrombocytopenic conditions (`anemia_feature_importance.png`).
+- **Anemia Classifier (9 Classes):** Analyzes HGB, MCHC, and MCH to differentiate between Iron Deficiency, Macrocytic, Normocytic, Hypochromic, and Thrombocytopenic conditions.
 
 ---
 
@@ -324,7 +395,7 @@ Highlights the exact pixel regions driving the model's classification:
   <p><i>Figure 5: Grad-CAM++ Heatmap Overlay for Detected Meningioma Tumor on Brain MRI (Confidence: 97.5%)</i></p>
 </div>
 
-### 2. Numerical Attribution (Feature Importance & Flags)
+### 2. Numerical Attribution (Feature Importance & Reference Flags)
 Instead of returning a blunt prediction probability, the system surfaces:
 - The **top 4 influential laboratory biomarkers** with percentage contributions.
 - Automatic **High/Low flags** extracted from the patient's specific lab reference range.
@@ -414,7 +485,8 @@ As a graduating software engineer, key technical lessons and planned enhancement
 
 1. **Multimodal Superstep Synchronization:** Deep learning pipelines and text loaders run at different latencies. Implementing explicit synchronizer nodes (`image_sync`) in LangGraph resolved race conditions and double-invocation bugs.
 2. **Clinical Safety over Raw Accuracy:** In clinical informatics, minimizing False Negatives is paramount. Calibrating the Chest X-Ray Gatekeeper to `Max F2` (%98.61 Recall) demonstrates a deliberate choice to prioritize patient safety over precision.
-3. **Identified Technical Debt:**
+3. **Retrieval Quality Engineering:** Naive semantic search fails on dense clinical abbreviations. Combining BM25, Reciprocal Rank Fusion, and Cross-Encoder deep reranking directly enhances the accuracy of diagnostic LLM generation.
+4. **Identified Technical Debt:**
    - Incorporating the existing Thyroid model (`Thyroid_expert_model.joblib`) into the dynamic lab registry.
    - Decoupling the frontend API base URL into standard `VITE_API_URL` configuration.
    - Offloading heavy Grad-CAM rendering to an asynchronous queue (e.g., Celery/RabbitMQ).
