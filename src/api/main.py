@@ -1,18 +1,25 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 from src.api.contract.contract import AgentRequest, AgentResponse
-from src.graph.workflow import app as medical_graph 
+from src.graph.workflow import app as medical_graph
+from src.core.config import Config
 import json
 from pathlib import Path
+import os
 
 # ==========================================
 # 📂 YOL BULUCU (PATH RESOLVER) AYARLARI
 # ==========================================
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Config.BASE_DIR
 
 IMAGE_DIR = BASE_DIR / "data" / "resource_db" / "images"
 DOC_DIR = BASE_DIR / "data" / "resource_db" / "documents"
+HEATMAP_DIR = Config.HEATMAP_DIR
+
+# Heatmap dizinini başlangıçta oluştur (StaticFiles mount için şart)
+os.makedirs(HEATMAP_DIR, exist_ok=True)
 
 def get_absolute_image_path(filename: str | None) -> str | None:
     if not filename:
@@ -31,6 +38,10 @@ def get_absolute_doc_path(filename: str | None) -> str | None:
 # ==========================================
 
 app = FastAPI(title="Medical AI CDSS Agent API")
+
+# Grad-CAM heatmap'lerini statik dosya olarak servis et
+# Frontend: http://localhost:8000/heatmaps/<uuid>.png
+app.mount("/heatmaps", StaticFiles(directory=str(HEATMAP_DIR)), name="heatmaps")
 
 @app.post("/api/agent/chat", response_model=AgentResponse)
 async def consult_agent(request: AgentRequest):
@@ -71,14 +82,18 @@ async def consult_agent(request: AgentRequest):
 
         print('*' * 50)
 
+        # grad_cam_path sadece basename (uuid.png) döner; tam URL'e çevir
+        heatmap_basename = final_state.get("grad_cam_path")
+        heatmap_url = f"http://localhost:8000/heatmaps/{heatmap_basename}" if heatmap_basename else None
+
         agent_response : AgentResponse = AgentResponse(
             aiMessage=final_state.get("final_report", "Analiz yapılamadı."),
             sources=final_state.get("evidence_links", []),
-            
+
             imagePrediction=final_state.get("image_prediction"),
             imageConfidenceScore=final_state.get("image_confidence"),
-            heatmapUrl=final_state.get("grad_cam_path"),
-            
+            heatmapUrl=heatmap_url,
+
             documentPrediction=final_state.get("lab_prediction"),
             documentConfidenceScore=final_state.get("lab_confidence"),
             featureImportance=final_state.get("feature_importance")

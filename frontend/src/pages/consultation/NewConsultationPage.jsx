@@ -7,6 +7,7 @@ import { getPatientById, searchByNationalId } from '../../services/patientServic
 import { createConsultation } from '../../services/consultationService'
 import { getErrorMessage } from '../../utils/errorHandler'
 import { GENDER_LABELS, BLOOD_TYPE_LABELS } from '../../utils/constants'
+import { formatAge } from '../../utils/helpers'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 
 export default function NewConsultationPage() {
@@ -101,7 +102,7 @@ export default function NewConsultationPage() {
             </p>
             <p className="text-sm text-text-secondary">TC: {patient.nationalId}</p>
             <div className="flex gap-4 text-sm text-text-secondary mt-2">
-              <span>Yaş: {patient.age}</span>
+              <span>Yaş: {formatAge(patient.dateOfBirth)}</span>
               <span>{GENDER_LABELS[patient.gender] ?? patient.gender}</span>
               <span>{BLOOD_TYPE_LABELS[patient.bloodType] ?? patient.bloodType}</span>
             </div>

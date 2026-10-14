@@ -13,9 +13,6 @@ def diagnostic_agent_service(state: GraphState):
     print("\n👨‍⚕️ [DIAGNOSTIC AGENT] The Chief Medical Officer (LLM) is writing the final report...")
 
     retry_count = state.get("conflict_retry_count", 0)
-
-    if retry_count >= 3:
-        return {}
     
     # 1. Extract Synthesized Data and State Variables
     context = state.get("fused_clinical_context", {})
@@ -73,10 +70,10 @@ You will be provided with the patient's demographics, clinical history, laborato
 Your Tasks and Constraints:
 1. Holistic Synthesis: Evaluate the provided clinical and radiological findings comprehensively, keeping the patient's age, gender, and chronic diseases in mind.
 2. Missing Modalities & Limitations: Evaluate ONLY what is provided. Do NOT hallucinate missing tests. If the absence of a specific modality prevents a definitive assessment, explicitly state this limitation.
-3. Cross-Modality Intelligence: If both laboratory and radiological data are present, act like a medical detective. Identify and explain any clinical correlations between the two sources. 
+3. Cross-Modality Intelligence: If both laboratory and radiological data are present, act like a medical detective. Identify and explain any clinical correlations between the two sources.
 4. Evidence-Based Medicine: Ground your recommendations in the provided "Medical Literature (RAG)". If the literature is missing, rely on standard medical protocols.
 5. Ethical Boundaries: Do not provide a definitive, legally binding diagnosis. Provide risk assessments, differential possibilities, and triage recommendations. Tell the doctor/patient exactly which medical specialist they should consult next.
-6. Tone & Style: Use a professional, highly scientific, yet empathetic language. Ensure the output is strictly in English.
+6. Language: CRITICAL — Your ENTIRE response MUST be written in Turkish (Türkçe). All sections, findings, summaries, and recommendations must be in Turkish. Even if the input data, RAG literature, or anomalies are in English, translate and respond entirely in Turkish.
 
 PATIENT DEMOGRAPHICS & HISTORY:
 {profile_summary}
@@ -88,11 +85,11 @@ MEDICAL LITERATURE (RAG):
 {final_retrieved_docs}
 
 {guidance}
-Please format your final report strictly using the following structure:
-- Clinical Status Summary
-- Cross-Modality Findings & Diagnostic Limitations
-- Evidence-Based Evaluation
-- Recommended Next Steps & Specialist Referrals
+Please format your final report strictly using the following structure (all in Turkish):
+- Klinik Durum Özeti
+- Çapraz Modalite Bulguları ve Tanısal Sınırlılıklar
+- Kanıta Dayalı Değerlendirme
+- Önerilen Sonraki Adımlar ve Uzman Yönlendirmeleri
 """
 
     prompt = ChatPromptTemplate.from_messages([

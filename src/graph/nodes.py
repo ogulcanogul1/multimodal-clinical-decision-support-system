@@ -12,7 +12,8 @@ from src.graph.services.adaptive_fusion_service import adaptive_fusion_service
 from src.graph.services.diagnostic_agent_service import diagnostic_agent_service
 from src.graph.services.self_critique_service import self_critique_service
 from src.graph.services.conflict_resolver_service import conflict_resolver_service
-from src.graph.services.extract_pdf_service import document_loader_service 
+from src.graph.services.extract_pdf_service import document_loader_service
+from src.graph.services.xai_generator_service import xai_generator_service
 
 
 from src import logger
@@ -142,9 +143,9 @@ def diagnostic_agent_node(state: GraphState):
     """LLM ile klinik teşhis üretir."""
     return diagnostic_agent_service(state=state)
 
-def attribution_node(state: GraphState):
-    """Tanıyı kanıtlarla (XAI) eşleştirir."""
-    pass
+def xai_generator_node(state: GraphState):
+    """Modality'e göre ilgili CNN modelinden Grad-CAM heatmap üretir."""
+    return xai_generator_service(state=state)
 
 # --- SELF-CORRECTION ---
 def self_critique_node(state: GraphState):

@@ -1,6 +1,6 @@
 import os
 from src.graph.model.llm_factory_ollama import OllamaLLMFactory
-from src.graph.model.OpenAI_llm_factory import OpenAILLMFactory
+from src.graph.model.openAI_llm_factory import OpenAILLMFactory
 
 # .env dosyasından okuyabilirsin veya burayı manuel True/False yapabilirsin
 USE_OPENAI = os.getenv("USE_OPENAI", "True").lower() == "true"

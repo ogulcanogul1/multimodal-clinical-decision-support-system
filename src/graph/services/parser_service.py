@@ -26,6 +26,6 @@ def parser_service(state:GraphState):
         
     return {
         "active_branches": active_branches,
-        "rag_retry_count": 0,
+        "retrieval_retry_count": 0,
         "status": SystemStatus.STARTED.value
     }

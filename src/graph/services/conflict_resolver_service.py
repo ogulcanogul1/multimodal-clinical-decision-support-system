@@ -13,24 +13,11 @@ def conflict_resolver_service(state: GraphState):
     # 1. State'ten Denetçi Geri Bildirimini ve Deneme Sayısını Al
     feedback = state.get("critique_feedback", "An unknown medical inconsistency or hallucination was detected.")
     retry_count = state.get("conflict_retry_count", 0)
-    
-    # ==========================================
-    # 2. SONSUZ DÖNGÜ KORUMASI (Fail-Safe)
-    # ==========================================
-    if retry_count >= 2:
-        print("   🚨 [DİKKAT] Maksimum düzeltme denemesine ulaşıldı! Sonsuz döngü engelleniyor.")
-        
-        emergency_warning = "\n\n*(System Note: This AI-generated report failed some internal medical cross-checks. Please consult a human specialist for a definitive diagnosis.)*"
-        forced_report = state.get("final_report", "") + emergency_warning
-        
-        return {
-            "final_report": forced_report,
-            "critique_status": "verified", # Router'ı kandırıp akışı "__end__" düğümüne bitirmeye zorluyoruz
-            "conflict_retry_count": retry_count + 1 
-        }
 
     # ==========================================
-    # 3. BAŞHEKİM İÇİN DÜZELTME TALİMATI (İNGİLİZCEYE ÇEVRİLDİ VE RAG EKLENDİ)
+    # 2. BAŞHEKİM İÇİN DÜZELTME TALİMATI
+    # (Sonsuz döngü koruması workflow.py'deki critique_logic tarafından sağlanır:
+    #  retry_count >= MAX_RETRY olduğunda oradan "verified" dönülüp END'e gidilir.)
     # ==========================================
     resolution_guidance = (
         f"\n\n⚠️ CRITICAL WARNING: YOUR PREVIOUS REPORT WAS REJECTED BY THE MEDICAL QA AUDITOR ⚠️\n"

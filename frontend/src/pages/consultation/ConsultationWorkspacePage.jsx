@@ -43,6 +43,13 @@ export default function ConsultationWorkspacePage() {
     setDocumentAnalyses(docRes.data)
   }, [id])
 
+  // Chat gönderimi sırasında AI; görüntü/belge satırlarına tahmin + güven + heatmapUrl
+  // yazar (ChatMessageService). Bu yüzden mesaj sonrası SADECE mesajları değil,
+  // analizleri de yeniden çekmeliyiz; yoksa Grad-CAM/tahmin elle yenilemeden görünmez.
+  const handleMessageSent = useCallback(async () => {
+    await Promise.all([fetchMessages(), fetchAnalyses()])
+  }, [fetchMessages, fetchAnalyses])
+
   useEffect(() => {
     async function load() {
       try {
@@ -91,6 +98,8 @@ export default function ConsultationWorkspacePage() {
   }
 
   const isOpen = consultation?.status === 'OPEN'
+  const clinicalNotes = documentAnalyses.filter((d) => d.documentType === 'CLINICAL_NOTE')
+  const labAnalyses = documentAnalyses.filter((d) => d.documentType !== 'CLINICAL_NOTE')
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem-3rem)] -m-6">
@@ -128,17 +137,17 @@ export default function ConsultationWorkspacePage() {
 
       {/* 3-panel layout */}
       <div className="flex flex-1 min-h-0">
-        {/* Left — Patient info (20%) */}
+        {/* Left — Patient info */}
         <div className="w-52 shrink-0 border-r border-surface-border bg-surface-card overflow-hidden">
           <PatientInfoPanel patient={patient} />
         </div>
 
-        {/* Center — Chat (flex-1 ~50%) */}
+        {/* Center — Chat */}
         <div className="flex-1 flex flex-col min-w-0 border-r border-surface-border">
           <ChatPanel
             consultationId={id}
             messages={messages}
-            onMessageSent={fetchMessages}
+            onMessageSent={handleMessageSent}
             isOpen={isOpen}
             pendingImage={selectedImageForChat}
             pendingDocument={selectedDocumentForChat}
@@ -147,8 +156,9 @@ export default function ConsultationWorkspacePage() {
           />
         </div>
 
-        {/* Right — Analysis panels (30%) */}
+        {/* Right — Image + Lab */}
         <div className="w-80 shrink-0 flex flex-col min-h-0 overflow-hidden">
+          {/* Image analysis */}
           <div className="flex-1 overflow-hidden border-b border-surface-border">
             <ImageAnalysisPanel
               consultationId={id}
@@ -161,10 +171,12 @@ export default function ConsultationWorkspacePage() {
               isOpen={isOpen}
             />
           </div>
+
+          {/* Lab analysis */}
           <div className="flex-1 overflow-hidden">
             <DocumentAnalysisPanel
               consultationId={id}
-              analyses={documentAnalyses}
+              analyses={labAnalyses}
               onAnalysisAdded={fetchAnalyses}
               onSelectForChat={(a) =>
                 setSelectedDocumentForChat(selectedDocumentForChat?.id === a.id ? null : a)

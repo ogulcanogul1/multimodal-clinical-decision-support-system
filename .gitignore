@@ -10,6 +10,11 @@ src\CLAUDE.md
 core-backend\CLAUDE.md
 CLAUDE.md
 
+# Lokal yardımcı belgeler (GitHub'a gitmesin)
+easy_start/
+chest_duzenleme_opus.md
+error.md
+
 
 # C extensions
 *.so

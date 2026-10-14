@@ -1,4 +1,5 @@
 import { GENDER_LABELS, BLOOD_TYPE_LABELS } from '../../utils/constants'
+import { formatAge } from '../../utils/helpers'
 
 export default function PatientInfoPanel({ patient }) {
   if (!patient) return null
@@ -15,7 +16,7 @@ export default function PatientInfoPanel({ patient }) {
       <div className="space-y-2 text-sm border-t border-surface-border pt-3">
         <div className="flex justify-between">
           <span className="text-text-muted">Yaş</span>
-          <span className="text-text-primary font-medium">{patient.age}</span>
+          <span className="text-text-primary font-medium">{formatAge(patient.dateOfBirth)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-text-muted">Cinsiyet</span>

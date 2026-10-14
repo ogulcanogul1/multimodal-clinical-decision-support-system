@@ -7,15 +7,15 @@ from src.graph.state import GraphState
 from src.schemas.node_schemas.gate_keeper_schemas import LabReport
 
 DIAGNOSIS_MAPPING = {
-    "Diabetes": {0: "✅ Healthy", 1: "⚠️ Diabetes Patient"},
-    "Cardiovascular": {0: "✅ Healthy", 1: "⚠️ Cardiovascular Disease Risk"},
-    "Kidney_CKD": {0: "⚠️ Chronic Kidney Disease (CKD)", 1: "✅ Healthy"}, # Reverse Logic
-    "Liver": {0: "⚠️ Liver Disease Symptom", 1: "✅ Healthy"}, # Reverse Logic
+    "Diabetes": {0: "✅ Sağlıklı", 1: "⚠️ Diyabet Hastası"},
+    "Cardiovascular": {0: "✅ Sağlıklı", 1: "⚠️ Kardiyovasküler Hastalık Riski"},
+    "Kidney_CKD": {0: "⚠️ Kronik Böbrek Hastalığı (KBH)", 1: "✅ Sağlıklı"}, # Ters Mantık
+    "Liver": {0: "⚠️ Karaciğer Hastalığı Belirtisi", 1: "✅ Sağlıklı"}, # Ters Mantık
     "Anemia": {
-        0: "✅ Healthy", 1: "⚠️ Iron Deficiency Anemia", 2: "⚠️ Leukemia Suspicion",
-        3: "⚠️ Leukemia with Thrombocytopenia", 4: "⚠️ Macrocytic Anemia", 
-        5: "⚠️ Normocytic Hypochromic Anemia", 6: "⚠️ Normocytic Normochromic Anemia",
-        7: "⚠️ Other Microcytic Anemia", 8: "⚠️ Thrombocytopenia"
+        0: "✅ Sağlıklı", 1: "⚠️ Demir Eksikliği Anemisi", 2: "⚠️ Lösemi Şüphesi",
+        3: "⚠️ Trombositopeni ile Lösemi", 4: "⚠️ Makrositik Anemi",
+        5: "⚠️ Normositik Hipokromik Anemi", 6: "⚠️ Normositik Normokromik Anemi",
+        7: "⚠️ Diğer Mikrositik Anemi", 8: "⚠️ Trombositopeni"
     }
 }
 
@@ -100,17 +100,30 @@ def lab_analyzer_service(state: GraphState):
     raw_gender = str(state.get("patient_gender") or getattr(lab_report, 'patient_gender', "MALE")).strip().upper()
     is_male = raw_gender in ["MALE", "M", "ERKEK", "1"]
     
-    liver_gender = 1 if is_male else 0
-    cardio_gender = 2 if is_male else 1 
+    # Liver modeli get_dummies(drop_first=True) ile 'gender_Male' (Male=1, Female=0) bekler.
+    liver_gender_male = 1 if is_male else 0
+    # Cardio dataset'i gender'ı numerik tutar (1=kadın, 2=erkek).
+    cardio_gender = 2 if is_male else 1
     
-    # --- GÜVENLİ VERİ ÇEKİMİ (Sessiz NaN Loglaması eklendi) ---
+    # --- GÜVENLİ VERİ ÇEKİMİ (Tam + gevşek eşleşme) ---
     def get_val(*aliases):
+        # 1) ÖNCE TAM EŞLEŞME (en güvenli)
         for a in aliases:
             norm_alias = normalize_key(a)
             if norm_alias in extracted_dict:
                 return parse_safe_float(extracted_dict[norm_alias])
-        
-        # Sadece eksik verileri görmek için geliştirici ekranına bas (Console'u çok kirletmemek için kısa yazdırıyoruz)
+
+        # 2) GEVŞEK EŞLEŞME: LLM "Total Kolesterol", "Sistolik Tansiyon (ap_hi)" gibi
+        #    qualifier'lı/parantezli isimler döndürebilir. Yeterince uzun (>=4) alias'lar
+        #    için substring eşleşmesi dene. ("totalkolesterol" ⊇ "kolesterol")
+        for a in aliases:
+            norm_alias = normalize_key(a)
+            if len(norm_alias) >= 4:
+                for k, v in extracted_dict.items():
+                    if norm_alias in k or k in norm_alias:
+                        return parse_safe_float(v)
+
+        # Sadece eksik verileri görmek için geliştirici ekranına bas
         print(f"   ⚠️ Eksik Tahlil: {aliases[0]}")
         return np.nan
 
@@ -129,14 +142,14 @@ def lab_analyzer_service(state: GraphState):
         
         "Liver": pd.DataFrame([{
             'age': age,
-            'gender': liver_gender,
-            'tot_bilirubin': get_val('total bilirubin', 'tbil', 'total bilirübin', 'tb', 'bil-t'),
-            'direct_bilirubin': get_val('direct bilirubin', 'dbil', 'direkt bilirübin', 'bil-d'),
-            'tot_proteins': get_val('total protein', 'tprot', 'tp', 'total protein'),
+            'gender_Male': liver_gender_male,
+            'tot_bilirubin': get_val('tot_bilirubin', 'total bilirubin', 'tbil', 'total bilirübin', 'tb', 'bil-t'),
+            'direct_bilirubin': get_val('direct_bilirubin', 'direct bilirubin', 'dbil', 'direkt bilirübin', 'bil-d'),
+            'tot_proteins': get_val('tot_proteins', 'total protein', 'tprot', 'tp'),
             'albumin': get_val('albumin', 'alb', 'albümin'),
-            'ag_ratio': get_val('a/g ratio', 'ag_ratio', 'a/g'),
-            'sgpt': get_val('sgpt', 'alt', 'alanin aminotransferaz'),
-            'sgot': get_val('sgot', 'ast', 'aspartat aminotransferaz'),
+            'ag_ratio': get_val('ag_ratio', 'a/g ratio', 'a/g'),
+            'sgpt': get_val('sgpt', 'alt / sgpt', 'alt', 'alanin aminotransferaz'),
+            'sgot': get_val('sgot', 'ast / sgot', 'ast', 'aspartat aminotransferaz'),
             'alkphos': get_val('alkphos', 'alp', 'alkalen fosfataz')
         }]),
         
@@ -169,22 +182,39 @@ def lab_analyzer_service(state: GraphState):
             'smoke': np.nan, 'alco': np.nan, 'active': np.nan
         }]),
         
+        # NOT: Kidney modeli (data/mlp/1.ipynb get_dummies) pcv/wc/rc'yi SÜREKLI değil
+        # ONE-HOT (pcv_44, wc_8000, rc_4.5 ...) olarak öğrenmiş. Numerik vermek modelde
+        # karşılığı olmadığı için sessizce düşer; aşağıda raw_dfs kurulduktan sonra
+        # birebir eşleşen dummy kolonunu set ediyoruz. Geri kalan numerik feature'lar
+        # ('su' dahil) modelle isim-isim uyuşur.
         "Kidney_CKD": pd.DataFrame([{
             'age': age,
             'bp': get_val('bp', 'bloodpressure', 'tansiyon', 'systolic'),
-            'sg': get_val('sg', 'specific gravity', 'dansite', 'özgül ağırlık'), # Yeni eklendi
-            'al': get_val('al', 'albumin', 'alb', 'albümin'), # Yeni eklendi
+            'sg': get_val('sg', 'specific gravity', 'dansite', 'özgül ağırlık'),
+            'al': get_val('al', 'albumin', 'alb', 'albümin'),
+            'su': get_val('su', 'sugar', 'idrar şekeri', 'glycosuria'),
             'bgr': get_val('bgr', 'glucose', 'glu', 'şeker'),
             'bu': get_val('bu', 'bun', 'blood urea', 'üre', 'ure'),
             'sc': get_val('sc', 'creatinine', 'kreatinin', 'crea'),
             'sod': get_val('sod', 'sodium', 'na', 'sodyum'),
             'pot': get_val('pot', 'potassium', 'k', 'potasyum'),
             'hemo': get_val('hemo', 'hemoglobin', 'hgb', 'hb'),
-            'pcv': get_val('pcv', 'hct', 'hematokrit'),
-            'wc': get_val('wc', 'wbc', 'lökosit'),
-            'rc': get_val('rc', 'rbc', 'eritrosit')
         }])
     }
+
+    # --- Kidney one-hot köprüsü: sürekli değeri eğitimdeki bucket'a birebir eşleşirse set et ---
+    # (Eşleşmezse predict_safely zaten düşürür; model 'missing' olarak ele alır.)
+    kidney_df = raw_dfs["Kidney_CKD"]
+    _pcv = get_val('pcv', 'hct', 'hematokrit')
+    _wc = get_val('wc', 'wbc', 'lökosit')
+    _rc = get_val('rc', 'rbc', 'eritrosit')
+    if pd.notna(_pcv):
+        kidney_df[f"pcv_{int(round(_pcv))}"] = 1.0
+    if pd.notna(_wc):
+        kidney_df[f"wc_{int(round(_wc))}"] = 1.0
+    if pd.notna(_rc):
+        # rc dummy'leri 'rc_4.5' formatında (gereksiz sıfırsız)
+        kidney_df[f"rc_{_rc:g}"] = 1.0
 
     analysis_results = {}
     model_dir = "data/mlp/" 
@@ -192,6 +222,7 @@ def lab_analyzer_service(state: GraphState):
     max_risk_score = 0.0
     primary_prediction = "Healthy"
     feature_importance_dict = {}
+    models_ran = 0  # Kaç uzman model gerçekten tahmin üretti (atlanmadı/hatasız)
 
     print("\n🧠 Modeller Değerlendiriliyor...")
     for disease_name, raw_df in raw_dfs.items():
@@ -224,8 +255,11 @@ def lab_analyzer_service(state: GraphState):
             message = DIAGNOSIS_MAPPING[disease_name][pred_class]
             analysis_results[f"{disease_name}_Report"] = f"{message} (Risk: {risk_ratio*100:.1f}%)"
             print(f"   ✅ {disease_name} Modeli Çalıştı -> {message}")
+            models_ran += 1
 
-            if risk_ratio > max_risk_score and "✅ Healthy" not in message:
+            # DİKKAT: Mesajlar Türkçe ("✅ Sağlıklı"). Eski kod İngilizce "✅ Healthy"
+            # arıyordu → koşul daima True olup sağlıklı tahminleri de primary seçiyordu.
+            if risk_ratio > max_risk_score and "Sağlıklı" not in message:
                 max_risk_score = risk_ratio
                 primary_prediction = message.replace("⚠️ ", "")
                 
@@ -239,11 +273,25 @@ def lab_analyzer_service(state: GraphState):
             analysis_results[f"{disease_name}_Report"] = f"Analysis Error: {str(e)}"
 
     print("\n✅ All Expert Models executed and results synthesized!")
-    
+
+    # Sonucu netleştir: "hiçbir model çalışmadı" ≠ "sağlıklı".
+    if models_ran == 0:
+        # Yüklenen tahlil, hiçbir uzman modelin zorunlu parametrelerini karşılamadı.
+        # (Örn. Cardiovascular modeli 'ap_hi' tansiyon ister; saf kan tahlilinde olmaz.)
+        primary_prediction = "Uzman model çalıştırılamadı (tahlilde gerekli parametreler yok)"
+        confidence_out = None
+    elif max_risk_score > 0.0:
+        # En yüksek riskli hastalık bulgusunun güveni
+        confidence_out = float(max_risk_score)
+    else:
+        # Modeller çalıştı ama hepsi sağlıklı / anlamlı risk yok
+        primary_prediction = "Sağlıklı (anlamlı risk saptanmadı)"
+        confidence_out = None
+
     return {
         "lab_analysis_results": analysis_results,
         "lab_prediction": primary_prediction,
-        "lab_confidence": float(max_risk_score),
+        "lab_confidence": confidence_out,
         "feature_importance": feature_importance_dict
     }
 

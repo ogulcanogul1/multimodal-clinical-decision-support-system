@@ -67,7 +67,10 @@ class GraphState(TypedDict):
     conflict_retry_count: Optional[int]
     resolution_guidance: Optional[str] 
     
+    # --- PDF EXTRACT ---
+    pdf_rejection_reason: Optional[str]
+
     # --- ÇIKTI ---
-    final_report: str                
+    final_report: str
     evidence_links: List[Dict[str, Any]]  # List of Dict yaptık (Java'daki listeye uyum için)
     status: str

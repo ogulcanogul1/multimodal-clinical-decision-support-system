@@ -40,9 +40,16 @@ class Config:
 
     
     
-    CHUNK_SIZE = 500 
+    CHUNK_SIZE = 500
     CHUNK_OVERLAP = 50
-    LLM_MODEL_NAME = "llama3.2" 
+    LLM_MODEL_NAME = "llama3.2"
+
+    # --- CDSS Router (Gatekeeper CNN) ---
+    ROUTER_MODEL_PATH = DATA_DIR / "cnn" / "chest" / "cdss_model" / "router_output" / "best_router_v3.pth"
+    ROUTER_CONFIDENCE_THRESHOLD = 0.75
+
+    # --- XAI / Grad-CAM ---
+    HEATMAP_DIR = DATA_DIR / "resource_db" / "heatmaps"
 
     PINECONE_API_KEY = os.environ["PINECONE_API_KEY"]
     PINECONE_INDEX_NAME = os.environ["PINECONE_INDEX_NAME"] 

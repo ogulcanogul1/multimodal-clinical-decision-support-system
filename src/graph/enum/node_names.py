@@ -16,6 +16,7 @@ class NodeNames(str, Enum):
     LAB_SKIP = "lab_skip"
     ADAPTIVE_FUSION = "adaptive_fusion"
     DIAGNOSTIC_AGENT = "diagnostic_agent"
-    ATTRIBUTION = "attribution"
     SELF_CRITIQUE = "self_critique"
     CONFLICT_RESOLVER = "conflict_resolver"
+    XAI_GENERATOR = "xai_generator"
+    IMAGE_SYNC = "image_sync"

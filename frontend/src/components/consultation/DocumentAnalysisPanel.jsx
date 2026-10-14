@@ -1,12 +1,11 @@
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { toast } from 'react-hot-toast'
-import { Upload, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { Upload, FileText, CheckCircle, XCircle, X } from 'lucide-react'
 import { uploadDocument, giveDocumentFeedback } from '../../services/documentAnalysisService'
 import { DOCUMENT_TYPE_LABELS } from '../../utils/constants'
 import ConfidenceBar from '../common/ConfidenceBar'
 import LoadingSpinner from '../common/LoadingSpinner'
-import { formatDateTime } from '../../utils/helpers'
 
 const IMPORTANCE_LABELS = {
   high: 'Yüksek Etki',
@@ -16,6 +15,11 @@ const IMPORTANCE_LABELS = {
   orta_etki: 'Orta Etki',
   düşük_etki: 'Düşük Etki',
 }
+
+const FILENAME_KEY = (id) => `doc_filename_${id}`
+
+// CLINICAL_NOTE is handled by ClinicalNotesPanel, excluded here
+const DOC_TYPE_OPTIONS = Object.entries(DOCUMENT_TYPE_LABELS).filter(([v]) => v !== 'CLINICAL_NOTE')
 
 export default function DocumentAnalysisPanel({
   consultationId,
@@ -28,6 +32,14 @@ export default function DocumentAnalysisPanel({
   const [documentType, setDocumentType] = useState('BLOOD_TEST')
   const [uploading, setUploading] = useState(false)
   const [feedbackLoading, setFeedbackLoading] = useState({})
+  const [uploadRequested, setUploadRequested] = useState(false)
+
+  const showUpload = analyses.length === 0 || uploadRequested
+  const analysis = analyses[analyses.length - 1] ?? null
+
+  function getFilename(a) {
+    return localStorage.getItem(FILENAME_KEY(a.id)) ?? DOCUMENT_TYPE_LABELS[a.documentType] ?? a.documentType
+  }
 
   const onDrop = useCallback(
     async (acceptedFiles) => {
@@ -40,8 +52,11 @@ export default function DocumentAnalysisPanel({
       formData.append('consultationId', consultationId)
       formData.append('documentType', documentType)
       try {
-        await uploadDocument(formData)
+        const res = await uploadDocument(formData)
+        localStorage.setItem(FILENAME_KEY(res.data.id), file.name)
         toast.success('Doküman analizi tamamlandı')
+        setUploadRequested(false)
+        onSelectForChat(res.data)
         onAnalysisAdded()
       } catch {
         toast.error('Doküman yüklenemedi')
@@ -74,8 +89,7 @@ export default function DocumentAnalysisPanel({
 
   function getTopFeatures(featureImportance) {
     if (!featureImportance) return []
-    return Object.entries(featureImportance)
-      .slice(0, 4)
+    return Object.entries(featureImportance).slice(0, 4)
   }
 
   return (
@@ -84,139 +98,158 @@ export default function DocumentAnalysisPanel({
         Laboratuvar Analizi
       </p>
 
-      <select
-        value={documentType}
-        onChange={(e) => setDocumentType(e.target.value)}
-        className="w-full px-3 py-2 rounded-lg border border-surface-border bg-white text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-      >
-        {Object.entries(DOCUMENT_TYPE_LABELS).map(([v, l]) => (
-          <option key={v} value={v}>{l}</option>
-        ))}
-      </select>
+      {/* Upload area */}
+      {showUpload && (
+        <>
+          <select
+            value={documentType}
+            onChange={(e) => setDocumentType(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg border border-surface-border bg-white text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            {DOC_TYPE_OPTIONS.map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
 
-      {/* Dropzone */}
-      <div
-        {...getRootProps()}
-        className={`relative border-2 border-dashed rounded-xl py-8 px-4 text-center cursor-pointer transition-all duration-200 ${
-          isDragActive
-            ? 'border-primary-500 bg-primary-50 scale-[1.01]'
-            : 'border-surface-border hover:border-primary-400 hover:bg-primary-50/40'
-        } ${(uploading || !isOpen) ? 'opacity-50 cursor-not-allowed' : ''}`}
-      >
-        <input {...getInputProps()} />
-        {uploading ? (
-          <div className="flex flex-col items-center gap-3">
-            <LoadingSpinner size="md" />
-            <p className="text-sm font-medium text-text-secondary">Analiz ediliyor...</p>
-            <p className="text-xs text-text-muted">Lütfen bekleyin</p>
+          <div
+            {...getRootProps()}
+            className={`relative border-2 border-dashed rounded-xl py-8 px-4 text-center cursor-pointer transition-all duration-200 ${
+              isDragActive
+                ? 'border-primary-500 bg-primary-50 scale-[1.01]'
+                : 'border-surface-border hover:border-primary-400 hover:bg-primary-50/40'
+            } ${(uploading || !isOpen) ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <input {...getInputProps()} />
+            {uploading ? (
+              <div className="flex flex-col items-center gap-3">
+                <LoadingSpinner size="md" />
+                <p className="text-sm font-medium text-text-secondary">Analiz ediliyor...</p>
+                <p className="text-xs text-text-muted">Lütfen bekleyin</p>
+              </div>
+            ) : isDragActive ? (
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
+                  <Upload size={22} className="text-primary-600" />
+                </div>
+                <p className="text-sm font-semibold text-primary-600">Dosyayı bırakın</p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-12 h-12 rounded-full bg-surface-hover border border-surface-border flex items-center justify-center mb-1">
+                  <FileText size={22} className="text-text-muted" />
+                </div>
+                <p className="text-sm font-medium text-text-secondary">
+                  Dosyayı buraya sürükleyin
+                </p>
+                <p className="text-xs text-text-muted">veya tıklayarak seçin</p>
+                <span className="mt-1 text-xs text-text-muted bg-surface-hover border border-surface-border px-2 py-0.5 rounded-full">
+                  PDF, TXT
+                </span>
+              </div>
+            )}
           </div>
-        ) : isDragActive ? (
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
-              <Upload size={22} className="text-primary-600" />
+        </>
+      )}
+
+      {/* Analysis card */}
+      {!showUpload && analysis && (
+        <div
+          className={`rounded-xl border p-3 space-y-3 cursor-pointer transition ${
+            selectedId === analysis.id
+              ? 'border-primary-400 bg-primary-50'
+              : 'border-surface-border bg-surface-card hover:bg-surface-hover'
+          }`}
+          onClick={() => onSelectForChat(analysis)}
+        >
+          {/* Filename + X */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <FileText size={14} className="text-text-muted shrink-0" />
+              <span className="text-xs font-semibold text-text-primary truncate">
+                {getFilename(analysis)}
+              </span>
             </div>
-            <p className="text-sm font-semibold text-primary-600">Dosyayı bırakın</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); setUploadRequested(true) }}
+              className="shrink-0 p-0.5 rounded hover:bg-surface-border transition text-text-muted hover:text-text-primary"
+              title="Kaldır"
+            >
+              <X size={14} />
+            </button>
           </div>
-        ) : (
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-12 h-12 rounded-full bg-surface-hover border border-surface-border flex items-center justify-center mb-1">
-              <FileText size={22} className="text-text-muted" />
-            </div>
-            <p className="text-sm font-medium text-text-secondary">
-              Dosyayı buraya sürükleyin
-            </p>
-            <p className="text-xs text-text-muted">veya tıklayarak seçin</p>
-            <span className="mt-1 text-xs text-text-muted bg-surface-hover border border-surface-border px-2 py-0.5 rounded-full">
-              PDF, TXT
+
+          {/* Selected badge */}
+          {selectedId === analysis.id && (
+            <span className="inline-block text-xs font-medium text-primary-700 bg-primary-100 px-2 py-0.5 rounded-full">
+              Sohbete eklenecek
             </span>
-          </div>
-        )}
-      </div>
+          )}
 
-      {/* Analyses */}
-      {analyses.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide border-t border-surface-border pt-3">
-            Mevcut Analizler
-          </p>
-          {analyses.map((a) => {
-            const topFeatures = getTopFeatures(a.featureImportance)
-            return (
-              <div
-                key={a.id}
-                className={`rounded-lg border p-3 space-y-2 cursor-pointer transition ${
-                  selectedId === a.id
-                    ? 'border-primary-400 bg-primary-50'
-                    : 'border-surface-border bg-surface-card hover:bg-surface-hover'
-                }`}
-                onClick={() => onSelectForChat(a)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <FileText size={14} className="text-text-muted" />
-                    <span className="text-xs font-semibold text-text-primary">
-                      {DOCUMENT_TYPE_LABELS[a.documentType] ?? a.documentType}
-                    </span>
-                  </div>
-                  <span className="text-xs text-text-muted">{formatDateTime(a.createdAt)}</span>
-                </div>
+          {/* AI results — only if prediction exists */}
+          {analysis.mlpPrediction && (
+            <>
+              <div>
+                <p className="text-xs text-text-muted">AI Tahmini</p>
+                <p className="text-sm font-medium text-text-primary">{analysis.mlpPrediction}</p>
+              </div>
 
-                <div>
-                  <p className="text-xs text-text-muted">Tahmin</p>
-                  <p className="text-sm font-medium text-text-primary">{a.mlpPrediction}</p>
-                </div>
+              <div>
+                <p className="text-xs text-text-muted mb-1">Güven</p>
+                {analysis.confidenceScore != null ? (
+                  <ConfidenceBar confidence={analysis.confidenceScore} />
+                ) : (
+                  <p className="text-xs text-text-muted italic">
+                    Bu tahlil için uzman model güven skoru üretmedi
+                  </p>
+                )}
+              </div>
 
-                <div>
-                  <p className="text-xs text-text-muted mb-1">Güven</p>
-                  <ConfidenceBar confidence={a.confidenceScore} />
-                </div>
-
-                {topFeatures.length > 0 && (
+              {(() => {
+                const topFeatures = getTopFeatures(analysis.featureImportance)
+                return topFeatures.length > 0 ? (
                   <div>
                     <p className="text-xs text-text-muted mb-1">Önemli Faktörler</p>
                     <ul className="space-y-0.5">
                       {topFeatures.map(([key, val]) => (
                         <li key={key} className="flex justify-between text-xs">
                           <span className="text-text-primary">{key}</span>
-                          <span className="text-text-muted">
-                            {IMPORTANCE_LABELS[val] ?? val}
-                          </span>
+                          <span className="text-text-muted">{IMPORTANCE_LABELS[val] ?? val}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                )}
+                ) : null
+              })()}
 
-                {/* Feedback */}
-                {a.doctorFeedback === null || a.doctorFeedback === undefined ? (
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleFeedback(a.id, true) }}
-                      disabled={feedbackLoading[a.id]}
-                      className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md bg-success-100 text-success-700 hover:bg-success-500 hover:text-white transition disabled:opacity-50"
-                    >
-                      <CheckCircle size={12} /> Onayla
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleFeedback(a.id, false) }}
-                      disabled={feedbackLoading[a.id]}
-                      className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md bg-danger-100 text-danger-600 hover:bg-danger-500 hover:text-white transition disabled:opacity-50"
-                    >
-                      <XCircle size={12} /> Reddet
-                    </button>
-                  </div>
-                ) : a.doctorFeedback === true ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-success-700 bg-success-100 px-2 py-0.5 rounded-full">
-                    <CheckCircle size={11} /> Onaylandı
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-danger-600 bg-danger-100 px-2 py-0.5 rounded-full">
-                    <XCircle size={11} /> Reddedildi
-                  </span>
-                )}
-              </div>
-            )
-          })}
+              {/* Feedback — only after AI prediction */}
+              {analysis.doctorFeedback === null || analysis.doctorFeedback === undefined ? (
+                <div className="flex gap-2 pt-0.5">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleFeedback(analysis.id, true) }}
+                    disabled={feedbackLoading[analysis.id]}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md bg-success-100 text-success-700 hover:bg-success-500 hover:text-white transition disabled:opacity-50"
+                  >
+                    <CheckCircle size={12} /> Onayla
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleFeedback(analysis.id, false) }}
+                    disabled={feedbackLoading[analysis.id]}
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md bg-danger-100 text-danger-600 hover:bg-danger-500 hover:text-white transition disabled:opacity-50"
+                  >
+                    <XCircle size={12} /> Reddet
+                  </button>
+                </div>
+              ) : analysis.doctorFeedback === true ? (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-success-700 bg-success-100 px-2 py-0.5 rounded-full">
+                  <CheckCircle size={11} /> Onaylandı
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-danger-600 bg-danger-100 px-2 py-0.5 rounded-full">
+                  <XCircle size={11} /> Reddedildi
+                </span>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

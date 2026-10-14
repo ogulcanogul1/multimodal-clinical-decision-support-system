@@ -68,7 +68,7 @@ def mlp_control_service(state: GraphState):
             extracted_data.patient_age = patient_age
         if hasattr(extracted_data, 'patient_gender'):
             extracted_data.patient_gender = patient_gender
-        if hasattr(extracted_data,'blood_type'):
+        if hasattr(extracted_data, 'patient_blood_type'):
             extracted_data.patient_blood_type = blood_type
 
         print(f"✅ Başarıyla çıkarılan parametre sayısı: {len(extracted_data.parameters)}")
@@ -91,4 +91,4 @@ def mlp_control_service(state: GraphState):
         
     except Exception as e:
         print(f"🚨 [HATA] Veri çıkarma başarısız: {e}")
-        return {"lab_data": None, "is_valid": False}
+        return {"lab_data": None, "lab_is_valid": False}

@@ -16,11 +16,16 @@ def adaptive_fusion_service(state: GraphState):
     print(type(image_results))
     
     # --- YENİ EKLENEN: HASTANIN KLİNİK BAĞLAMI ---
+    # Doktorun şikayeti çoğu zaman chief_complaint yerine message_content'te gelir.
+    # chief_complaint null ise doktorun mesajını şikayet olarak kullan ki
+    # self_critique bunu "halüsinasyon" sanıp reddetmesin.
+    chief_complaint = state.get("chief_complaint") or state.get("message_content") or "Not specified"
+
     fusion_report = {
         "Patient_Profile": {
             "Age": state.get("patient_age"),
             "Gender": state.get("patient_gender"),
-            "Chief_Complaint": state.get("chief_complaint", "Not specified"),
+            "Chief_Complaint": chief_complaint,
             "Chronic_Diseases": state.get("chronic_diseases", []),
             "Allergies": state.get("allergies", []),
             "Medications": state.get("current_medications", [])
@@ -38,9 +43,30 @@ def adaptive_fusion_service(state: GraphState):
             # Hayalet anahtarları ve hataları atla
             if test_name in ["System_Note", "Error"] or "Error" in str(result):
                 continue
-                
+
             if "⚠️" in str(result):
                 fusion_report["Lab_Anomalies"].append(f"{test_name.replace('_Report', '')}: {result.replace('⚠️ ', '')}")
+
+    # ==========================================
+    # 1b. HAM RAPOR FLAG'LERİ (ML modelinden BAĞIMSIZ ground truth)
+    # ML modeli "sağlıklı" dese veya atlansa bile, raporun kendi referans
+    # aralığına göre H/L işaretlenmiş değerleri doktora MUTLAKA göster.
+    # ==========================================
+    lab_data = state.get("lab_data")
+    if lab_data is not None and getattr(lab_data, "parameters", None):
+        for param in lab_data.parameters:
+            flag = str(getattr(param, "flag", "") or "").strip().upper()
+            if flag not in ("H", "L"):
+                continue
+            direction = "HIGH" if flag == "H" else "LOW"
+            unit = getattr(param, "unit", None) or ""
+            ref_min = getattr(param, "ref_min", None)
+            ref_max = getattr(param, "ref_max", None)
+            ref = f" (Ref: {ref_min}-{ref_max})" if ref_min is not None or ref_max is not None else ""
+            name = getattr(param, "name", "?")
+            fusion_report["Lab_Anomalies"].append(
+                f"{name}: {getattr(param, 'value', '?')} {unit}{ref} [{direction}]".strip()
+            )
 
     # ==========================================
     # 2. SADECE ANORMALLİKLERİ FİLTRELE (GÖRÜNTÜ - HAYALET TUZAĞI ÇÖZÜLDÜ)
@@ -50,20 +76,20 @@ def adaptive_fusion_service(state: GraphState):
             # Geçmiş testlerden kalan hayalet notları döngü içinde atlıyoruz!
             if test_name in ["System_Note", "Error", "Lung_General_Status"] or "Error" in str(result):
                 continue
-                
+
             res_str = str(result)
             res_str_lower = res_str.lower()
-            
-            # Risk taşıyan anahtar kelimeler (Case-insensitive için lower yapıldı)
-            risk_keywords = [
-                "abnormal", "detected", "positive", "retinopathy", 
-                "glaucoma", "cataract", "glioma", "meningioma", "pituitary"
+
+            # CNN uzmanları Türkçe sınıf ismi döner (Katarakt, Glokom, Diyabetik Retinopati,
+            # Menenjiyom, Hipofiz...). İngilizce keyword listesiyle eşleştirmek dile bağımlı ve
+            # kırılgan — onun yerine "sağlıklı/normal değilse bulgudur" mantığını kullanıyoruz.
+            normal_keywords = [
+                "normal", "sağlıklı", "saglikli", "healthy",
+                "no tumor", "tümör yok", "tumor yok", "negative"
             ]
-            
-            is_abnormal = any(keyword in res_str_lower for keyword in risk_keywords)
-            
-            # Eğer tümör kelimesi varsa ve başında "No" yoksa al.
-            if ("tumor" in res_str_lower and "no tumor" not in res_str_lower) or is_abnormal:
+            is_normal = any(keyword in res_str_lower for keyword in normal_keywords)
+
+            if not is_normal:
                 fusion_report["Image_Anomalies"].append(f"{test_name}: {res_str}")
 
     fusion_report["Total_Anomaly_Count"] = len(fusion_report["Lab_Anomalies"]) + len(fusion_report["Image_Anomalies"])

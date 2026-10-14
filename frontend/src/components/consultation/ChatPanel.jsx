@@ -121,7 +121,7 @@ export default function ChatPanel({
                 handleSend()
               }
             }}
-            placeholder="Mesajınızı yazın... (Shift+Enter yeni satır)"
+            placeholder="Klinik notları girin... (Shift+Enter yeni satır)"
             rows={2}
             disabled={sending || !isOpen}
             className="flex-1 px-3 py-2.5 rounded-lg border border-surface-border bg-white text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none transition disabled:bg-surface-bg disabled:cursor-not-allowed"

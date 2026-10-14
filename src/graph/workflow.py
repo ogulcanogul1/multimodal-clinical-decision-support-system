@@ -10,17 +10,6 @@ from src.graph.enum.node_names import NodeNames
 
 logger = logging.getLogger(__name__)
 
-# =========================================================================
-# ⏱️ ZAMAN BÜKÜCÜ (SAHTE DÜĞÜM)
-# =========================================================================
-def image_sync_node(state: GraphState):
-    """
-    SAHTE DÜĞÜM (DUMMY NODE)
-    Amacı: Görüntü dalının adım sayısını (superstep), Lab dalının (PDF_EXTRACT yüzünden uzayan) 
-    adım sayısıyla eşitlemektir. Hiçbir veriyi değiştirmez, sadece 1 adım oyalar.
-    """
-    return {}
-
 # --- YÖNLENDİRME MANTIKLARI (ROUTERS) ---
 
 def parser_dynamic_router(state: GraphState) -> List[str]:
@@ -35,7 +24,7 @@ def parser_dynamic_router(state: GraphState) -> List[str]:
         active_outputs.append(NodeNames.CNN_CONTROL.value)
     
     # PDF veya Raw Text varsa Lab dalını başlat
-    if state.get("document_url") or state.get("pdf_path") or state.get("raw_document_text"):
+    if state.get("document_url") or state.get("raw_document_text"):
         active_outputs.append(NodeNames.PDF_EXTRACT.value)
         
     # EĞER SADECE METİN (SOHBET) GELDİYSE:
@@ -120,11 +109,11 @@ workflow.add_node(NodeNames.LAB_ANALYZER.value, lab_analyzer_node)
 workflow.add_node(NodeNames.LAB_SKIP.value, lab_skip_node)
 
 # --- SAHTE DÜĞÜMÜ EKLEDİK ---
-workflow.add_node("image_sync", image_sync_node)
+workflow.add_node(NodeNames.IMAGE_SYNC.value, image_sync_node)
 
 workflow.add_node(NodeNames.ADAPTIVE_FUSION.value, adaptive_fusion_node)
+workflow.add_node(NodeNames.XAI_GENERATOR.value, xai_generator_node)
 workflow.add_node(NodeNames.DIAGNOSTIC_AGENT.value, diagnostic_agent_node)
-workflow.add_node(NodeNames.ATTRIBUTION.value, attribution_node)
 workflow.add_node(NodeNames.SELF_CRITIQUE.value, self_critique_node)
 workflow.add_node(NodeNames.CONFLICT_RESOLVER.value, conflict_resolver_node)
 
@@ -153,11 +142,11 @@ workflow.add_conditional_edges(
 )
 
 # DÜZELTME: Doğrudan Fusion'a gitmek yerine önce Sahte Düğüme uğrar (Zaman kazanmak için).
-workflow.add_edge(NodeNames.IMAGE_ANALYZER.value, "image_sync")
-workflow.add_edge(NodeNames.IMAGE_SKIP.value, "image_sync")
+workflow.add_edge(NodeNames.IMAGE_ANALYZER.value, NodeNames.IMAGE_SYNC.value)
+workflow.add_edge(NodeNames.IMAGE_SKIP.value, NodeNames.IMAGE_SYNC.value)
 
 # Sahte düğümden çıkıp Fusion'a girer (Böylece Lab dalı ile tam aynı anda kapıya varmış olur).
-workflow.add_edge("image_sync", NodeNames.ADAPTIVE_FUSION.value)
+workflow.add_edge(NodeNames.IMAGE_SYNC.value, NodeNames.ADAPTIVE_FUSION.value)
 # =========================================================================
 
 # 3. LABORATUVAR (MLP) DALI
@@ -180,19 +169,19 @@ workflow.add_edge(NodeNames.HYBRID_SEARCH.value, NodeNames.KNOWLEDGE_SYNTHESIS.v
 workflow.add_edge(NodeNames.WEB_RESEARCH.value, NodeNames.KNOWLEDGE_SYNTHESIS.value)
 workflow.add_edge(NodeNames.KNOWLEDGE_SYNTHESIS.value, NodeNames.RETRIEVAL_GRADER.value)
 
-# 6. RAG ÇIKIŞI -> DİAGNOSTİK AGENT (BAŞHEKİM)
+# 6. RAG ÇIKIŞI -> XAI GENERATOR -> DİAGNOSTİK AGENT (BAŞHEKİM)
 workflow.add_conditional_edges(
     NodeNames.RETRIEVAL_GRADER.value,
     retrieval_quality_logic,
     {
-        "retry": NodeNames.QUERY_OPTIMIZER.value, 
-        "continue": NodeNames.DIAGNOSTIC_AGENT.value 
+        "retry": NodeNames.QUERY_OPTIMIZER.value,
+        "continue": NodeNames.XAI_GENERATOR.value,
     }
 )
+workflow.add_edge(NodeNames.XAI_GENERATOR.value, NodeNames.DIAGNOSTIC_AGENT.value)
 
 # 7. RAPORLAMA VE DENETİM (SELF-CRITIQUE) DALI
-workflow.add_edge(NodeNames.DIAGNOSTIC_AGENT.value, NodeNames.ATTRIBUTION.value)
-workflow.add_edge(NodeNames.ATTRIBUTION.value, NodeNames.SELF_CRITIQUE.value)
+workflow.add_edge(NodeNames.DIAGNOSTIC_AGENT.value, NodeNames.SELF_CRITIQUE.value)
 
 workflow.add_conditional_edges(
     NodeNames.SELF_CRITIQUE.value,
@@ -203,7 +192,7 @@ workflow.add_edge(NodeNames.CONFLICT_RESOLVER.value, NodeNames.DIAGNOSTIC_AGENT.
 
 app = workflow.compile()
 
-def save_graph(app=app, filename="src/graph/graph.png"):
+def save_graph(app=app, filename="src/graph/graph_new.png"):
     try:
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         with open(filename, "wb") as f:

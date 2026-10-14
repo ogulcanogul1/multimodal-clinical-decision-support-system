@@ -29,8 +29,12 @@ Compare the 'Raw Clinical Facts' & 'Medical Literature' against the 'Generated D
 
 Your primary goal is PATIENT SAFETY. Do NOT nitpick vocabulary, tone, or minor semantic differences (e.g., do not reject the report just because it uses "probable" instead of "suggestive of").
 
+GROUND TRUTH — NEVER FLAG AS HALLUCINATION:
+The 'Chief_Complaint' field in the Raw Clinical Facts is the symptom/reason stated by the DOCTOR. It is authoritative input, not an AI invention. The report addressing, restating, or working up this complaint is ALWAYS correct. NEVER reject the report for mentioning a symptom that appears in the Chief_Complaint (e.g. if the complaint is "vision problem", the report discussing vision issues is fully grounded).
+The patient-provided lab/image findings in the facts are likewise authoritative.
+
 ONLY reject the report (Output status: "conflict") if you find a MAJOR clinical error:
-1. Dangerous Hallucination: Inventing a completely new severe disease, allergy, or current medication NOT present in the context. (Reasonable clinical inferences based on the facts are allowed).
+1. Dangerous Hallucination: Inventing a completely new severe DISEASE/DIAGNOSIS, allergy, or current medication that is NOT supported by the Chief_Complaint, lab anomalies, or image findings. (Restating the complaint itself is NOT a hallucination; asserting an unproven definitive diagnosis from it IS.)
 2. Fatal Contradiction: Explicitly calling a critically abnormal lab result "normal", or recommending a drug the patient is allergic to.
 3. Reckless Action: Recommending an immediate invasive surgery or prescribing dangerous drugs without advising a specialist consultation first. (Note: Stating the AI's high-confidence prediction as the primary diagnosis is ACCEPTABLE as long as specialist follow-up is recommended).
 
